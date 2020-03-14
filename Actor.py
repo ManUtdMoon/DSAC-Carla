@@ -17,10 +17,30 @@ class Actor():
         np.random.seed(seed)
         torch.manual_seed(seed)
 
+        self.params = {
+            'number_of_vehicles': 0,
+            'number_of_walkers': 0,
+            'display_size': 256,  # screen size of bird-eye render
+            'obs_size': 256,  # screen size of cv2 window
+            'dt': 0.1,  # time interval between two frames
+            'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
+            'port': 2003,  # connection port
+            'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
+            'code_mode': 'train',
+            'max_time_episode': 1000,  # maximum timesteps per episode
+            'max_waypt': 12,  # maximum number of waypoints
+            'obs_range': 32,  # observation range (meter)
+            'lidar_bin': 0.125,  # bin size of lidar sensor (meter)
+            'd_behind': 12,  # distance behind the ego vehicle (meter)
+            'out_lane_thres': 2.0,  # threshold for out of lane
+            'desired_speed': 8,  # desired speed (m/s)
+            'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
+        }
+
         self.counter = shared_value[0]
         self.stop_sign = shared_value[1]
         self.lock = lock
-        self.env = gym.make(args.env_name)
+        self.env = gym.make(args.env_name, params=self.params)
         self.args = args
         self.experience_in_queue = []
         for i in range(args.num_buffers):
@@ -44,6 +64,7 @@ class Actor():
                 time.sleep(0.5)
                 self.put_data()
             else:
+                # self.experience_in_queue[index].put((self.last_state, self.last_u, [self.reward*self.args.reward_scale], self.state, [self.done], self.TD.detach().cpu().numpy().squeeze()))
                 self.experience_in_queue[index].put((self.last_state, self.last_u, [self.reward*self.args.reward_scale], self.state, [self.done], self.TD.detach().cpu().numpy().squeeze()))
         else:
             pass

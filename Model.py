@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.distributions import Normal
 import math
 
-
+'''
 class QNet(nn.Module):
     def __init__(self, args,log_std_min=-6, log_std_max=6):
         super(QNet, self).__init__()
@@ -99,6 +99,7 @@ class QNet(nn.Module):
         elif isinstance(self, nn.BatchNorm1d):
             self.weight.data.fill_(1)
             self.bias.data.zero_()
+
 
 class PolicyNet(nn.Module):
     def __init__(self, args,log_std_min=-20, log_std_max=2):
@@ -230,7 +231,6 @@ class PolicyNet(nn.Module):
             self.bias.data.zero_()
 
 
-
 class ValueNet(nn.Module):
     def __init__(self, num_states, num_hidden_cell,NN_type):
         super(ValueNet, self).__init__()
@@ -302,23 +302,117 @@ class ValueNet(nn.Module):
         elif isinstance(self, nn.BatchNorm1d):
             self.weight.data.fill_(1)
             self.bias.data.zero_()
+'''
+
+class QNet(nn.Module):
+    def __init__(self, args,log_std_min=-6, log_std_max=6):
+        super(QNet, self).__init__()
+        num_states = args.state_dim
+        num_action = args.action_dim
+        num_hidden_cell = args.num_hidden_cell
+        self.NN_type = args.NN_type
+        if self.NN_type == "CNN":
+            self.conv_part = nn.Sequential(
+                nn.Conv2d(num_states[-1], 32, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(32),
+                nn.GELU(),
+
+                nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(64),
+                nn.GELU(),
+
+                nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(128),
+                nn.GELU(),
+
+                nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(256),
+                nn.GELU(),)
+            _conv_out_size = self._get_conv_out_size(num_states)
+
+            self.linear1 = nn.Linear(256*16*16, num_hidden_cell[0], bias=True)
+            self.linear2 = nn.Linear(num_hidden_cell[0], num_hidden_cell[1], bias=True)
+            self.linear3 = nn.Linear(num_hidden_cell[1], num_hidden_cell[2], bias=True)
+
+        # the size of info tensor is (9,1)
+        self.mean_layer = nn.Linear(num_hidden_cell[-1] + 9 + num_action, 1, bias=True)
+        self.log_std_layer = nn.Linear(num_hidden_cell[-1] + 9 + num_action, 1, bias=True)
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
+        self.apply(init_weights)
+        # self.init_weights()
+
+    def _get_conv_out_size(self, num_states):
+        out = self.conv_part(torch.zeros(num_states).unsqueeze(0).permute(0,3,1,2))
+        return int(np.prod(out.size()))
+
+    def forward(self, state, info, action):
+        if self.NN_type == "CNN":
+            x = self.conv_part(state)
+            x = x.view(state.size(0),-1)
+
+            x = F.gelu(self.linear1(x))
+            x = F.gelu(self.linear2(x))
+            x = F.gelu(self.linear3(x))
+
+            x = torch.cat([x, info, action], 1)
+
+        mean = self.mean_layer(x)
+        log_std = self.log_std_layer(x)
+        log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
+
+        return mean, log_std
+
+    def evaluate(self, state, info, action, device=torch.device("cpu"), min=False, epsilon=1e-6):
+        mean, log_std = self.forward(state, info, action)
+        std = log_std.exp()
+        normal = Normal(torch.zeros(mean.shape), torch.ones(std.shape))
+
+        if min == False:
+            z = normal.sample().to(device)
+            z = torch.clamp(z, -2, 2)
+        elif min == True:
+            z = -torch.abs(normal.sample()).to(device)
+
+        q_value = mean + torch.mul(z, std)
+        return mean, std, q_value
+
+
+def init_weights(child_module):
+    if type(child_module) = nn.Linear:
+        nn.init.xavier_uniform_(child_module.weight)
+        child_module.bias.data.fill_(0)
+
+    elif type(child_module) == nn.Conv2d:
+        nn.init.xavier_uniform_(child_module.weight)
+        child_module.bias.data.fill_(0)
+
+
+class Args(object):
+    def __init__(self):
+        self.state_dim = (256, 256, 3)
+        self.action_dim = 3
+        self.NN_type = 'CNN'
+        self.num_hidden_cell = [8192, 1024, 128]
 
 
 def test():
-    mean = torch.tensor([[0,0],[0.5,0.5]], dtype = torch.float32)
-    sig = torch.tensor([[1, 1],[2,2]], dtype=torch.float32)
-    print(mean.shape)
-    bbb = torch.zeros(mean.shape)
-    ccc = torch.ones(sig.shape)
-    dist = Normal(bbb, ccc).sample()
+    # mean = torch.tensor([[0,0],[0.5,0.5]], dtype = torch.float32)
+    # sig = torch.tensor([[1, 1],[2,2]], dtype=torch.float32)
+    # print(mean.shape)
+    # bbb = torch.zeros(mean.shape)
+    # ccc = torch.ones(sig.shape)
+    # dist = Normal(bbb, ccc).sample()
 
-    pro = Normal(bbb, ccc).log_prob(dist)
-    print(pro)
+    # pro = Normal(bbb, ccc).log_prob(dist)
+    # print(pro)
 
-    bb = dist.pow(2)
-    print(bb)
-    print(bb-1)
-    print(bb.sum(-1, keepdim=True))
+    # bb = dist.pow(2)
+    # print(bb)
+    # print(bb-1)
+    # print(bb.sum(-1, keepdim=True))
+    args = Args()
+    q_net = QNet(args)
 
 
 

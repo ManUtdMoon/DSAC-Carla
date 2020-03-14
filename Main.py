@@ -17,18 +17,19 @@ from Model import QNet, PolicyNet
 import my_optim
 import gym
 
+
 def built_parser(method):
     parser = argparse.ArgumentParser()
 
 
     '''Task'''
-    parser.add_argument("--env_name", default="HalfCheetah-v2")
+    parser.add_argument("--env_name", default="gym_carla:carla-v0")
     #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 Hopper-v2 InvertedDoublePendulum-v2
     parser.add_argument('--state_dim', dest='list', type=int, default=[])
     parser.add_argument('--action_dim', type=int, default=[])
     parser.add_argument('--action_high', dest='list', type=float, default=[],action="append")
     parser.add_argument('--action_low', dest='list', type=float, default=[],action="append")
-    parser.add_argument("--NN_type", default="mlp", help='mlp or CNN')
+    parser.add_argument("--NN_type", default="CNN", help='mlp or CNN')
     parser.add_argument("--code_model", default="train", help='train or simu')
 
     '''general hyper-parameters'''
@@ -38,7 +39,7 @@ def built_parser(method):
     parser.add_argument('--tau', type=float, default=0.001, help='learning rate for target')
     parser.add_argument('--gamma', type=float, default=0.99, help='discount factor for rewards (default: 0.99)')
     parser.add_argument('--delay_update', type=int, default=2, help='update interval for policy, target')
-    parser.add_argument('--reward_scale', type=float, default=0.2)
+    parser.add_argument('--reward_scale', type=float, default=1.0)
 
     '''hyper-parameters for soft-Q based algorithm'''
     parser.add_argument('--alpha_lr', type=float, default=0.00005,help='learning rate for temperature')
@@ -49,7 +50,7 @@ def built_parser(method):
     parser.add_argument('--buffer_size_max', type=int, default=500000, help='replay memory size')
     parser.add_argument('--initial_buffer_size', type=int, default=2000, help='Learner waits until replay memory stores this number of transition')
     parser.add_argument('--batch_size', type=int, default=256)
-    parser.add_argument('--num_hidden_cell', type=int, default=256)
+    parser.add_argument('--num_hidden_cell', type='list', default=[8192, 1024, 128])
 
     '''other setting'''
     parser.add_argument("--max_train", type=int, default=2000000)
@@ -60,9 +61,9 @@ def built_parser(method):
     parser.add_argument('--seed', type=int, default=1, help='initial seed (default: 1)')
 
     '''parallel architecture'''
-    parser.add_argument("--num_buffers", type=int, default=4)
-    parser.add_argument("--num_learners", type=int, default=4)
-    parser.add_argument("--num_actors", type=int, default=6)
+    parser.add_argument("--num_buffers", type=int, default=1)
+    parser.add_argument("--num_learners", type=int, default=1)
+    parser.add_argument("--num_actors", type=int, default=1)
 
     '''method list'''
     parser.add_argument("--method", type=int, default=method)
@@ -151,9 +152,31 @@ def simu_agent(args, shared_value):
     simu.run()
 
 def main(method):
+
+    params = {
+        'number_of_vehicles': 0,
+        'number_of_walkers': 0,
+        'display_size': 256,  # screen size of bird-eye render
+        'obs_size': 256,  # screen size of cv2 window
+        'dt': 0.1,  # time interval between two frames
+        'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
+        'port': 2000,  # connection port
+        'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
+        'code_mode': 'train',
+        'max_time_episode': 1000,  # maximum timesteps per episode
+        'max_waypt': 12,  # maximum number of waypoints
+        'obs_range': 32,  # observation range (meter)
+        'lidar_bin': 0.125,  # bin size of lidar sensor (meter)
+        'd_behind': 12,  # distance behind the ego vehicle (meter)
+        'out_lane_thres': 2.0,  # threshold for out of lane
+        'desired_speed': 8,  # desired speed (m/s)
+        'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
+    }
+
+
     args = built_parser(method=method)
-    env = gym.make(args.env_name)
-    state_dim = env.observation_space.shape
+    env = gym.make(args.env_name, params=params)
+    state_dim = env.state_space.shape
     action_dim = env.action_space.shape[0]
 
     #max_action = float(env.action_space.high[0])
@@ -166,7 +189,7 @@ def main(method):
     args.seed = np.random.randint(0,30)
     args.init_time = time.time()
     num_cpu = mp.cpu_count()
-
+    # print(state_dim, action_dim, action_high, num_cpu)
     Q_net1 = QNet(args)
     Q_net1.train()
     Q_net1.share_memory()
@@ -240,8 +263,8 @@ def main(method):
         procs.append(Process(target=test_agent, args=(args, shared_value, [actor1, log_alpha])))
         procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
         for i in range(args.num_learners):
-            #device = torch.device("cuda")
-            device = torch.device("cpu")
+            device = torch.device("cuda")
+            # device = torch.device("cpu")
             procs.append(Process(target=leaner_agent, args=(args, shared_queue, shared_value,share_net,share_optimizer,device,lock,i)))
     elif args.code_model=="simu":
         procs.append(Process(target=simu_agent, args=(args, shared_value)))
@@ -256,7 +279,7 @@ if __name__ == '__main__':
     os.environ["OMP_NUM_THREADS"] = "1"
     #os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-    for i in range(0,7,1):
+    for i in range(0,1,1):
         main(i)
 
 
