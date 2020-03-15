@@ -7,6 +7,7 @@ import pandas as pd
 import copy
 from functools import reduce
 import matplotlib.pyplot as plt
+from utils import *
 
 
 def plot_online(env_name, last_method_idx, Method_Name, max_state):
@@ -58,12 +59,27 @@ class Evaluator(object):
         seed = args.seed
         np.random.seed(seed)
         torch.manual_seed(seed)
+
+        eval_params = {
+            'number_of_vehicles': 0,
+            'number_of_walkers': 0,
+            'obs_size': 256,  # screen size of cv2 window
+            'dt': 0.1,  # time interval between two frames
+            'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
+            'port': 2009,  # connection port
+            'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
+            'code_mode': 'train',
+            'max_time_episode': 1000,  # maximum timesteps per episode
+            'desired_speed': 8,  # desired speed (m/s)
+            'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
+        }
+
         self.stop_sign = shared_value[1]
         self.iteration_counter = shared_value[2]
         self.iteration = self.iteration_counter.value
         self.share_net = share_net
         self.args = args
-        self.env = gym.make(args.env_name)
+        self.env = gym.make(args.env_name, params=eval_params)
         self.device = torch.device("cpu")
         self.actor = PolicyNet(args).to(self.device)
         self.Q_net1 = QNet(args).to(self.device)
@@ -86,27 +102,36 @@ class Evaluator(object):
 
     def run_an_episode(self):
         state_list = []
+        info_list = []
         action_list = []
         log_prob_list = []
         reward_list = []
         evaluated_Q_list = []
         done = 0
-        state = self.env.reset()
+        state, info_dict = self.env.reset()
+        info = info_dict_to_array(info_dict)
+
         while not done and len(reward_list) < self.args.max_step:
             state_tensor = torch.FloatTensor(state.copy()).float().to(self.device)
-            u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), self.args.stochastic_actor)
+            info_tensor = torch.FloatTensor(info.copy()).float().to(self.device)
+
+            u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), self.args.stochastic_actor)
             state_list.append(state.copy())
+            info_list.append(info.copy())
             action_list.append(u.copy())
             log_prob_list.append(log_prob)
+
             if self.args.double_Q and not self.args.double_actor:
                 q = torch.min(
-                    self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0],
-                    self.Q_net2(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0])
+                    self.Q_net1(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0],
+                    self.Q_net2(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0])
             else:
-                q = self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0]
+                q = self.Q_net1(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0]
             evaluated_Q_list.append(q.detach().item())
             u = u.squeeze(0)
-            state, reward, done, load_action = self.env.step(u)
+            state, reward, done, info_dict = self.env.step(u)
+            info = info_dict_to_array(info_dict)
+
             # self.env.render(mode='human')
             reward_list.append(reward * self.args.reward_scale)
         entropy_list = list(-self.alpha * np.array(log_prob_list))
@@ -115,6 +140,7 @@ class Evaluator(object):
         episode_len = len(reward_list)
 
         return dict(state_list=np.array(state_list),
+                    info_list=np.array(info_list),
                     action_list=np.array(action_list),
                     log_prob_list=np.array(log_prob_list),
                     reward_list=np.array(reward_list),

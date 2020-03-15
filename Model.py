@@ -335,8 +335,8 @@ class QNet(nn.Module):
             self.linear3 = nn.Linear(num_hidden_cell[1], num_hidden_cell[2], bias=True)
 
         # the size of info tensor is (9,1)
-        self.mean_layer = nn.Linear(num_hidden_cell[-1] + 9 + num_action, 1, bias=True)
-        self.log_std_layer = nn.Linear(num_hidden_cell[-1] + 9 + num_action, 1, bias=True)
+        self.mean_layer = nn.Linear(num_hidden_cell[-1] + 10 + num_action, 1, bias=True)
+        self.log_std_layer = nn.Linear(num_hidden_cell[-1] + 10 + num_action, 1, bias=True)
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
         self.apply(init_weights)
@@ -410,8 +410,8 @@ class PolicyNet(nn.Module):
             self.linear2 = nn.Linear(num_hidden_cell[0], num_hidden_cell[1], bias=True)
             self.linear3 = nn.Linear(num_hidden_cell[1], num_hidden_cell[2], bias=True)
 
-        self.mean_layer = nn.Linear(num_hidden_cell[-1] + 9, len(action_high), bias=True)
-        self.log_std_layer = nn.Linear(num_hidden_cell[-1] + 9, len(action_high), bias=True)
+        self.mean_layer = nn.Linear(num_hidden_cell[-1] + 10, len(action_high), bias=True)
+        self.log_std_layer = nn.Linear(num_hidden_cell[-1] + 10, len(action_high), bias=True)
         self.apply(init_weights)
 
         self.action_high = torch.tensor(action_high, dtype=torch.float32)
@@ -515,7 +515,7 @@ class ValueNet(nn.Module):
             self.linear1 = nn.Linear(256*16*16, num_hidden_cell[0], bias=True)
             self.linear2 = nn.Linear(num_hidden_cell[0], num_hidden_cell[1], bias=True)
             self.linear3 = nn.Linear(num_hidden_cell[1], num_hidden_cell[2], bias=True)
-            self.linear4 = nn.Linear(num_hidden_cell[-1] + 9, 1, bias=True)
+            self.linear4 = nn.Linear(num_hidden_cell[-1] + 10, 1, bias=True)
 
         self.apply(init_weights)
 
@@ -576,16 +576,17 @@ def test():
     # print(bb.sum(-1, keepdim=True))
 
     args = Args()
-    # p_net = PolicyNet(args)
+    p_net = PolicyNet(args)
     img = torch.ones((1, 3, 256,256))
-    info = torch.ones((1, 9))
-    action = torch.ones((256,2))
-    # p_net.forward(img, info)
-    # p_net.get_action(img, info, True)
+    info = torch.ones((1, 10))
+    action = torch.ones((10, 2))
+    p_net.forward(img, info)
+    # print(info.requires_grad)
+    p_net.get_action(img, info, True)
     # p_net.evaluate(img, info, False)
 
-    v_net = ValueNet((256, 256, 3), [8192, 1024, 128], 'CNN')
-    v_net.forward(img, info)
+    # v_net = ValueNet((256, 256, 3), [8192, 1024, 128], 'CNN')
+    # v_net.forward(img, info)
 
 
 if __name__ == "__main__":

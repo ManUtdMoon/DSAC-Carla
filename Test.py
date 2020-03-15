@@ -9,7 +9,7 @@ import gym
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-
+from utils import *
 
 def plot_online(env_name, last_method_idx, Method_Name):
     # make a total dataframe
@@ -52,6 +52,20 @@ class Test():
         np.random.seed(seed)
         torch.manual_seed(seed)
 
+        test_params = {
+            'number_of_vehicles': 0,
+            'number_of_walkers': 0,
+            'obs_size': 256,  # screen size of cv2 window
+            'dt': 0.1,  # time interval between two frames
+            'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
+            'port': 2006,  # connection port
+            'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
+            'code_mode': 'train',
+            'max_time_episode': 1000,  # maximum timesteps per episode
+            'desired_speed': 8,  # desired speed (m/s)
+            'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
+        }
+
         self.stop_sign = shared_value[1]
         self.iteration_counter = shared_value[2]
         self.iteration = self.iteration_counter.value
@@ -78,12 +92,18 @@ class Test():
     def run_an_episode(self):
         reward_list = []
         done = 0
-        state = self.env.reset()
+        state, info_dict = self.env.reset()
+        info = info_dict_to_array(info_dict)
+
         while not done and len(reward_list) < self.args.max_step:
             state_tensor = torch.FloatTensor(state.copy()).float().to(self.device)
-            u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), True)
+            info_tensor = torch.FloatTensor(info.copy()).float().to(self.device)
+
+            u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
             u = u.squeeze(0)
-            state, reward, done, load_action = self.env.step(u)
+            state, reward, done, info_dict = self.env.step(u)
+            info = info_dict_to_array(info_dict)
+
             #self.env.render(mode='human')
             reward_list.append(reward)
         episode_return = sum(reward_list)
