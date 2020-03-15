@@ -50,7 +50,7 @@ def built_parser(method):
     parser.add_argument('--buffer_size_max', type=int, default=500000, help='replay memory size')
     parser.add_argument('--initial_buffer_size', type=int, default=2000, help='Learner waits until replay memory stores this number of transition')
     parser.add_argument('--batch_size', type=int, default=256)
-    parser.add_argument('--num_hidden_cell', type='list', default=[8192, 1024, 128])
+    parser.add_argument('--num_hidden_cell', type=int, default=[8192, 1024, 128])
 
     '''other setting'''
     parser.add_argument("--max_train", type=int, default=2000000)
@@ -263,8 +263,8 @@ def main(method):
         procs.append(Process(target=test_agent, args=(args, shared_value, [actor1, log_alpha])))
         procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
         for i in range(args.num_learners):
-            device = torch.device("cuda")
-            # device = torch.device("cpu")
+            # device = torch.device("cuda")
+            device = torch.device("cpu")
             procs.append(Process(target=leaner_agent, args=(args, shared_queue, shared_value,share_net,share_optimizer,device,lock,i)))
     elif args.code_model=="simu":
         procs.append(Process(target=simu_agent, args=(args, shared_value)))
