@@ -377,9 +377,169 @@ class QNet(nn.Module):
         q_value = mean + torch.mul(z, std)
         return mean, std, q_value
 
+class PolicyNet(nn.Module):
+    def __init__(self, args,log_std_min=-20, log_std_max=2):
+        super(PolicyNet, self).__init__()
+        num_states = args.state_dim
+        num_hidden_cell = args.num_hidden_cell
+        action_high = args.action_high
+        action_low = args.action_low
+        self.NN_type = args.NN_type
+        self.args= args
+
+        if self.NN_type == "CNN":
+            self.conv_part = nn.Sequential(
+                nn.Conv2d(num_states[-1], 32, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(32),
+                nn.GELU(),
+
+                nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(64),
+                nn.GELU(),
+
+                nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(128),
+                nn.GELU(),
+
+                nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(256),
+                nn.GELU(),)
+            _conv_out_size = self._get_conv_out_size(num_states)
+
+            self.linear1 = nn.Linear(256*16*16, num_hidden_cell[0], bias=True)
+            self.linear2 = nn.Linear(num_hidden_cell[0], num_hidden_cell[1], bias=True)
+            self.linear3 = nn.Linear(num_hidden_cell[1], num_hidden_cell[2], bias=True)
+
+        self.mean_layer = nn.Linear(num_hidden_cell[-1] + 9, len(action_high), bias=True)
+        self.log_std_layer = nn.Linear(num_hidden_cell[-1] + 9, len(action_high), bias=True)
+        self.apply(init_weights)
+
+        self.action_high = torch.tensor(action_high, dtype=torch.float32)
+        self.action_low = torch.tensor(action_low, dtype=torch.float32)
+        self.action_range = (self.action_high - self.action_low)/2
+        self.action_bias =  (self.action_high + self.action_low)/2
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
+
+    def _get_conv_out_size(self, num_states):
+        out = self.conv_part(torch.zeros(num_states).unsqueeze(0).permute(0,3,1,2))
+        return int(np.prod(out.size()))
+
+    def forward(self, state, info):
+        if self.NN_type == "CNN":
+            x = self.conv_part(state)
+            x = x.view(state.size(0),-1)
+
+            x = F.gelu(self.linear1(x))
+            x = F.gelu(self.linear2(x))
+            x = F.gelu(self.linear3(x))
+
+            x = torch.cat([x, info], 1)
+
+        mean = self.mean_layer(x)
+        log_std = self.log_std_layer(x)
+        log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
+        return mean, log_std
+
+    def evaluate(self, state, info, smooth_policy, device=torch.device("cpu") , epsilon=1e-6):
+
+        mean, log_std = self.forward(state, info)
+        normal = Normal(torch.zeros(mean.shape), torch.ones(log_std.shape))
+        z = normal.sample().to(device)
+        std = log_std.exp()
+        if self.args.stochastic_actor:
+            z = torch.clamp(z, -3, 3)
+            action_0 = mean + torch.mul(z, std)
+            action_1 = torch.tanh(action_0)
+            action = torch.mul(self.action_range.to(device), action_1) + self.action_bias.to(device)
+            log_prob = Normal(mean, std).log_prob(action_0)-torch.log(1. - action_1.pow(2) + epsilon) - torch.log(self.action_range.to(device))
+            log_prob = log_prob.sum(dim=-1, keepdim=True)
+            return action, log_prob , std.detach()
+        else:
+            action_mean = torch.mul(self.action_range.to(device), torch.tanh(mean)) + self.action_bias.to(device)
+            smooth_random = torch.clamp(0.2*z, -0.5, 0.5)
+            action_random = action_mean + smooth_random
+            action_random = torch.min(action_random, self.action_high.to(device))
+            action_random = torch.max(action_random, self.action_low.to(device))
+            action = action_random if smooth_policy else action_mean
+            return action, 0*log_std.sum(dim=-1, keepdim=True) , std.detach()
+
+
+    def get_action(self, state, info, deterministic, epsilon=1e-6):
+        mean, log_std = self.forward(state, info)
+        normal = Normal(torch.zeros(mean.shape), torch.ones(log_std.shape))
+        z = normal.sample()
+        if self.args.stochastic_actor:
+            std = log_std.exp()
+            action_0 = mean + torch.mul(z, std)
+            action_1 = torch.tanh(action_0)
+            action = torch.mul(self.action_range, action_1) + self.action_bias
+            log_prob = Normal(mean, std).log_prob(action_0)-torch.log(1. - action_1.pow(2) + epsilon) - torch.log(self.action_range)
+            log_prob = log_prob.sum(dim=-1, keepdim=True)
+            action_mean = torch.mul(self.action_range, torch.tanh(mean)) + self.action_bias
+            action = action_mean.detach().cpu().numpy() if deterministic else action.detach().cpu().numpy()
+            return action, log_prob.detach().item()
+        else:
+            action_mean = torch.mul(self.action_range, torch.tanh(mean)) + self.action_bias
+            action = action_mean + 0.1 * torch.mul(self.action_range,z)
+            action = torch.min(action, self.action_high)
+            action = torch.max(action, self.action_low)
+            action = action_mean.detach().cpu().numpy() if deterministic else action.detach().cpu().numpy()
+            return action, 0
+
+
+class ValueNet(nn.Module):
+    def __init__(self, num_states, num_hidden_cell, NN_type):
+        super(ValueNet, self).__init__()
+        self.NN_type = NN_type
+
+        if self.NN_type == "CNN":
+            self.conv_part = nn.Sequential(
+                nn.Conv2d(num_states[-1], 32, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(32),
+                nn.GELU(),
+
+                nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(64),
+                nn.GELU(),
+
+                nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(128),
+                nn.GELU(),
+
+                nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(256),
+                nn.GELU(),)
+            _conv_out_size = self._get_conv_out_size(num_states)
+
+            self.linear1 = nn.Linear(256*16*16, num_hidden_cell[0], bias=True)
+            self.linear2 = nn.Linear(num_hidden_cell[0], num_hidden_cell[1], bias=True)
+            self.linear3 = nn.Linear(num_hidden_cell[1], num_hidden_cell[2], bias=True)
+            self.linear4 = nn.Linear(num_hidden_cell[-1] + 9, 1, bias=True)
+
+        self.apply(init_weights)
+
+    def _get_conv_out_size(self, num_states):
+        out = self.conv_part(torch.zeros(num_states).unsqueeze(0).permute(0,3,1,2))
+        return int(np.prod(out.size()))
+
+    def forward(self, state, info):
+        if self.NN_type == "CNN":
+            x = self.conv_part(state)
+            x = x.view(state.size(0),-1)
+
+            x = F.gelu(self.linear1(x))
+            x = F.gelu(self.linear2(x))
+            x = F.gelu(self.linear3(x))
+
+            x = torch.cat([x, info], 1)
+            x = self.linear4(x)
+
+        return x
+
 
 def init_weights(child_module):
-    if type(child_module) = nn.Linear:
+    if type(child_module) == nn.Linear:
         nn.init.xavier_uniform_(child_module.weight)
         child_module.bias.data.fill_(0)
 
@@ -391,9 +551,12 @@ def init_weights(child_module):
 class Args(object):
     def __init__(self):
         self.state_dim = (256, 256, 3)
-        self.action_dim = 3
+        self.action_dim = 2
         self.NN_type = 'CNN'
         self.num_hidden_cell = [8192, 1024, 128]
+        self.action_high = [1.0, 1.0]
+        self.action_low = [-1.0, -1.0]
+        self.stochastic_actor = True
 
 
 def test():
@@ -411,10 +574,18 @@ def test():
     # print(bb)
     # print(bb-1)
     # print(bb.sum(-1, keepdim=True))
+
     args = Args()
-    q_net = QNet(args)
+    # p_net = PolicyNet(args)
+    img = torch.ones((1, 3, 256,256))
+    info = torch.ones((1, 9))
+    action = torch.ones((256,2))
+    # p_net.forward(img, info)
+    # p_net.get_action(img, info, True)
+    # p_net.evaluate(img, info, False)
 
-
+    v_net = ValueNet((256, 256, 3), [8192, 1024, 128], 'CNN')
+    v_net.forward(img, info)
 
 
 if __name__ == "__main__":
