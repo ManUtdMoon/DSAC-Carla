@@ -156,7 +156,6 @@ def main(method):
     params = {
         'number_of_vehicles': 0,
         'number_of_walkers': 0,
-        'display_size': 256,  # screen size of bird-eye render
         'obs_size': 256,  # screen size of cv2 window
         'dt': 0.1,  # time interval between two frames
         'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
@@ -164,11 +163,6 @@ def main(method):
         'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
         'code_mode': 'train',
         'max_time_episode': 1000,  # maximum timesteps per episode
-        'max_waypt': 12,  # maximum number of waypoints
-        'obs_range': 32,  # observation range (meter)
-        'lidar_bin': 0.125,  # bin size of lidar sensor (meter)
-        'd_behind': 12,  # distance behind the ego vehicle (meter)
-        'out_lane_thres': 2.0,  # threshold for out of lane
         'desired_speed': 8,  # desired speed (m/s)
         'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
     }
@@ -184,12 +178,15 @@ def main(method):
     args.action_dim = action_dim
     action_high = env.action_space.high
     action_low = env.action_space.low
+    del env
+    
     args.action_high = action_high.tolist()
     args.action_low = action_low.tolist()
     args.seed = np.random.randint(0,30)
     args.init_time = time.time()
     num_cpu = mp.cpu_count()
-    # print(state_dim, action_dim, action_high, num_cpu)
+    print(state_dim, action_dim, action_high, num_cpu)
+
     Q_net1 = QNet(args)
     Q_net1.train()
     Q_net1.share_memory()
@@ -203,6 +200,8 @@ def main(method):
     Q_net2_target.train()
     Q_net2_target.share_memory()
     actor1 = PolicyNet(args)
+
+    print("Net inited")
     if args.code_model == "eval":
         actor1.load_state_dict(torch.load('./' + args.env_name + '/method_' + str(args.method) + '/model/policy_' + str(args.max_train) + '.pkl'))
     actor1.train()
@@ -217,13 +216,13 @@ def main(method):
     actor2_target.train()
     actor2_target.share_memory()
 
-
+    print("Net set")
     Q_net1_target.load_state_dict(Q_net1.state_dict())
     Q_net2_target.load_state_dict(Q_net2.state_dict())
     actor1_target.load_state_dict(actor1.state_dict())
     actor2_target.load_state_dict(actor2.state_dict())
 
-
+    print("Network loaded!")
 
     Q_net1_optimizer = my_optim.SharedAdam(Q_net1.parameters(), lr=args.critic_lr)
     Q_net1_optimizer.share_memory()
@@ -261,10 +260,10 @@ def main(method):
         for i in range(args.num_buffers):
             procs.append(Process(target=buffer, args=(args, shared_queue, shared_value,i)))
         procs.append(Process(target=test_agent, args=(args, shared_value, [actor1, log_alpha])))
-        procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
+        # procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
         for i in range(args.num_learners):
-            # device = torch.device("cuda")
-            device = torch.device("cpu")
+            device = torch.device("cuda")
+            # device = torch.device("cpu")
             procs.append(Process(target=leaner_agent, args=(args, shared_queue, shared_value,share_net,share_optimizer,device,lock,i)))
     elif args.code_model=="simu":
         procs.append(Process(target=simu_agent, args=(args, shared_value)))
