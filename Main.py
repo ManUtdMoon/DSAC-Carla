@@ -50,10 +50,10 @@ def built_parser(method):
     parser.add_argument('--buffer_size_max', type=int, default=500000, help='replay memory size')
     parser.add_argument('--initial_buffer_size', type=int, default=2000, help='Learner waits until replay memory stores this number of transition')
     parser.add_argument('--batch_size', type=int, default=256)
-    parser.add_argument('--num_hidden_cell', type=int, default=[8192, 1024, 128])
+    parser.add_argument('--num_hidden_cell', type=int, default=[1024, 128, 64])
 
     '''other setting'''
-    parser.add_argument("--max_train", type=int, default=2000000)
+    parser.add_argument("--max_train", type=int, default=1200000)
     parser.add_argument("--decay_T_max", type=int, default=parser.parse_args().max_train, help='for learning rate annealing')
     parser.add_argument('--load_param_period', type=int, default=20)
     parser.add_argument('--save_model_period', type=int, default=20000)
@@ -154,9 +154,7 @@ def simu_agent(args, shared_value):
 def main(method):
 
     params = {
-        'number_of_vehicles': 0,
-        'number_of_walkers': 0,
-        'obs_size': 256,  # screen size of cv2 window
+        'obs_size': 128,  # screen size of cv2 window
         'dt': 0.1,  # time interval between two frames
         'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
         'port': 2000,  # connection port
@@ -178,8 +176,7 @@ def main(method):
     args.action_dim = action_dim
     action_high = env.action_space.high
     action_low = env.action_space.low
-    del env
-    
+
     args.action_high = action_high.tolist()
     args.action_low = action_low.tolist()
     args.seed = np.random.randint(0,30)
@@ -202,6 +199,7 @@ def main(method):
     actor1 = PolicyNet(args)
 
     print("Net inited")
+
     if args.code_model == "eval":
         actor1.load_state_dict(torch.load('./' + args.env_name + '/method_' + str(args.method) + '/model/policy_' + str(args.max_train) + '.pkl'))
     actor1.train()
@@ -217,6 +215,7 @@ def main(method):
     actor2_target.share_memory()
 
     print("Net set")
+
     Q_net1_target.load_state_dict(Q_net1.state_dict())
     Q_net2_target.load_state_dict(Q_net2.state_dict())
     actor1_target.load_state_dict(actor1.state_dict())
@@ -236,6 +235,8 @@ def main(method):
     log_alpha.share_memory_()
     alpha_optimizer = my_optim.SharedAdam([log_alpha], lr=args.alpha_lr)
     alpha_optimizer.share_memory()
+
+    print("Optimizer done")
 
     share_net = [Q_net1,Q_net1_target,Q_net2,Q_net2_target,actor1,actor1_target,actor2,actor2_target,log_alpha]
     share_optimizer=[Q_net1_optimizer,Q_net2_optimizer,actor1_optimizer,actor2_optimizer,alpha_optimizer]

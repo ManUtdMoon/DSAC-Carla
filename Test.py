@@ -53,9 +53,7 @@ class Test():
         torch.manual_seed(seed)
 
         test_params = {
-            'number_of_vehicles': 0,
-            'number_of_walkers': 0,
-            'obs_size': 256,  # screen size of cv2 window
+            'obs_size': 128,  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': 2003,  # connection port
@@ -70,7 +68,7 @@ class Test():
         self.iteration_counter = shared_value[2]
         self.iteration = self.iteration_counter.value
         self.args = args
-        self.env = gym.make(args.env_name)
+        self.env = gym.make(args.env_name, params=test_params)
         self.device = torch.device("cpu")
         self.actor = PolicyNet(args).to(self.device)
         self.actor_share = share_net[0]
@@ -98,7 +96,8 @@ class Test():
         while not done and len(reward_list) < self.args.max_step:
             state_tensor = torch.FloatTensor(state.copy()).float().to(self.device)
             info_tensor = torch.FloatTensor(info.copy()).float().to(self.device)
-
+            if self.args.NN_type == "CNN":
+                state_tensor = state_tensor.permute(2, 0, 1)  # 3, 256, 256
             u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
             u = u.squeeze(0)
             state, reward, done, info_dict = self.env.step(u)

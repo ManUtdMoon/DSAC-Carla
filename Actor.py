@@ -18,9 +18,7 @@ class Actor():
         torch.manual_seed(seed)
 
         self.actor_params = {
-            'number_of_vehicles': 0,
-            'number_of_walkers': 0,
-            'obs_size': 256,  # screen size of cv2 window
+            'obs_size': 128,  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': 2000,  # connection port
@@ -96,6 +94,9 @@ class Actor():
                 #q_1 = self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0]
                 self.u = self.u.squeeze(0)
 
+                # TODO
+                # print(self.u)
+
                 self.TD = torch.zeros(1) #self.reward + (1 - self.done) * self.args.gamma * q_1 - last_q_1
                 self.put_data()
 
@@ -108,6 +109,8 @@ class Actor():
                     self.counter.value += 1
 
                 if self.done == True:
+                    # TODO
+                    print("Time steps:", self.env.time_step)
                     break
 
                 if step % self.args.load_param_period == 0:
