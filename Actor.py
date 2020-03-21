@@ -28,7 +28,7 @@ class Actor():
             'desired_speed': 8,  # desired speed (m/s)
             'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
         }
-
+        print(self.actor_params['port'])
         self.counter = shared_value[0]
         self.stop_sign = shared_value[1]
         self.lock = lock
@@ -110,7 +110,7 @@ class Actor():
 
                 if self.done == True:
                     # TODO
-                    print("Time steps:", self.env.time_step)
+                    # print("Time steps:", self.env.time_step)
                     break
 
                 if step % self.args.load_param_period == 0:

@@ -313,38 +313,26 @@ class QNet(nn.Module):
         self.NN_type = args.NN_type
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
-                nn.Conv2d(num_states[-1], 16, kernel_size=3, stride=2, padding=1),  # n, 3, 128, 128
-                nn.BatchNorm2d(16),
+                nn.Conv2d(num_states[-1], 32, kernel_size=4, stride=2, padding=3),  # in: n, 3, 128, 128
                 nn.GELU(),
-
-                nn.Conv2d(16, 24, kernel_size=3, stride=2, padding=1),  # n, 16, 64, 64
-                nn.BatchNorm2d(24),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 33, 33
                 nn.GELU(),
-
-                nn.Conv2d(24, 32, kernel_size=3, stride=2, padding=1),  # n, 24, 32, 32
-                nn.BatchNorm2d(32),
-                nn.GELU(),
-
-                nn.Conv2d(32, 48, kernel_size=3, stride=2, padding=1),  # n, 32, 16, 16
-                nn.BatchNorm2d(48),
-                nn.GELU(),
-
-                nn.Conv2d(48, 64, kernel_size=3, stride=2, padding=1),  # n, 48, 8, 8
-                nn.BatchNorm2d(64),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 9, 9
                 nn.GELU(),)
             _conv_out_size = self._get_conv_out_size(num_states)
-            # n, 64, 4, 4 -> [1024, 128, 64]
-            self.linear1 = nn.Linear(64*4*4, num_hidden_cell[0], bias=True)
-            self.linear2 = nn.Linear(num_hidden_cell[0], num_hidden_cell[1], bias=True)
-            self.linear3 = nn.Linear(num_hidden_cell[1] + 10 + num_action, num_hidden_cell[2], bias=True)
+            # n, 32, 6, 6 -> 256
+            self.linear1 = nn.Linear(32*6*6 + 10 + num_action, num_hidden_cell, bias=True)
+            self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
 
         # the size of info tensor is (9,1)
-        self.mean_layer = nn.Linear(num_hidden_cell[-1], 1, bias=True)
-        self.log_std_layer = nn.Linear(num_hidden_cell[-1], 1, bias=True)
+        self.mean_layer = nn.Linear(num_hidden_cell, 1, bias=True)
+        self.log_std_layer = nn.Linear(num_hidden_cell, 1, bias=True)
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
-        self.apply(init_weights)
-        # self.init_weights()
+        # self.apply(init_weights)
+        self.init_weights()
 
     def _get_conv_out_size(self, num_states):
         out = self.conv_part(torch.zeros(num_states).unsqueeze(0).permute(0,3,1,2))
@@ -354,12 +342,10 @@ class QNet(nn.Module):
         if self.NN_type == "CNN":
             x = self.conv_part(state)
             x = x.view(state.size(0),-1)
+            x = torch.cat([x, info, action], 1)
 
             x = F.gelu(self.linear1(x))
             x = F.gelu(self.linear2(x))
-
-            x = torch.cat([x, info, action], 1)
-            x = F.gelu(self.linear3(x))
 
         mean = self.mean_layer(x)
         log_std = self.log_std_layer(x)
@@ -380,6 +366,18 @@ class QNet(nn.Module):
 
         q_value = mean + torch.mul(z, std)
         return mean, std, q_value
+    
+    def init_weights(self):
+        if isinstance(self, nn.Linear):
+            weight_shape = list(self.weight.data.size())
+            fan_in = weight_shape[1]
+            fan_out = weight_shape[0]
+            w_bound = np.sqrt(6. / (fan_in + fan_out))
+            self.weight.data.uniform_(-w_bound, w_bound)
+            self.bias.data.fill_(0)
+        elif isinstance(self, nn.BatchNorm1d):
+            self.weight.data.fill_(1)
+            self.bias.data.zero_()
 
 class PolicyNet(nn.Module):
     def __init__(self, args,log_std_min=-20, log_std_max=2):
@@ -393,34 +391,24 @@ class PolicyNet(nn.Module):
 
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
-                nn.Conv2d(num_states[-1], 16, kernel_size=3, stride=2, padding=1),  # n, 3, 128, 128
-                nn.BatchNorm2d(16),
+                nn.Conv2d(num_states[-1], 32, kernel_size=4, stride=2, padding=3),  # in: n, 3, 128, 128
                 nn.GELU(),
-
-                nn.Conv2d(16, 24, kernel_size=3, stride=2, padding=1),  # n, 16, 64, 64
-                nn.BatchNorm2d(24),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 33, 33
                 nn.GELU(),
-
-                nn.Conv2d(24, 32, kernel_size=3, stride=2, padding=1),  # n, 24, 32, 32
-                nn.BatchNorm2d(32),
-                nn.GELU(),
-
-                nn.Conv2d(32, 48, kernel_size=3, stride=2, padding=1),  # n, 32, 16, 16
-                nn.BatchNorm2d(48),
-                nn.GELU(),
-
-                nn.Conv2d(48, 64, kernel_size=3, stride=2, padding=1),  # n, 48, 8, 8
-                nn.BatchNorm2d(64),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 9, 9
                 nn.GELU(),)
             _conv_out_size = self._get_conv_out_size(num_states)
 
-            self.linear1 = nn.Linear(64*4*4, num_hidden_cell[0], bias=True)
-            self.linear2 = nn.Linear(num_hidden_cell[0], num_hidden_cell[1], bias=True)
-            self.linear3 = nn.Linear(num_hidden_cell[1] + 10, num_hidden_cell[2], bias=True)
+            # n, 32, 6, 6 -> 256
+            self.linear1 = nn.Linear(32*6*6 + 10, num_hidden_cell, bias=True)
+            self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
 
-        self.mean_layer = nn.Linear(num_hidden_cell[-1], len(action_high), bias=True)
-        self.log_std_layer = nn.Linear(num_hidden_cell[-1], len(action_high), bias=True)
-        self.apply(init_weights)
+        self.mean_layer = nn.Linear(num_hidden_cell, len(action_high), bias=True)
+        self.log_std_layer = nn.Linear(num_hidden_cell, len(action_high), bias=True)
+        # self.apply(init_weights)
+        self.init_weights()
 
         self.action_high = torch.tensor(action_high, dtype=torch.float32)
         self.action_low = torch.tensor(action_low, dtype=torch.float32)
@@ -437,12 +425,9 @@ class PolicyNet(nn.Module):
         if self.NN_type == "CNN":
             x = self.conv_part(state)
             x = x.view(state.size(0),-1)
-
+            x = torch.cat([x, info], 1)
             x = F.gelu(self.linear1(x))
             x = F.gelu(self.linear2(x))
-
-            x = torch.cat([x, info], 1)
-            x = F.gelu(self.linear3(x))
 
         mean = self.mean_layer(x)
         log_std = self.log_std_layer(x)
@@ -495,6 +480,18 @@ class PolicyNet(nn.Module):
             action = action_mean.detach().cpu().numpy() if deterministic else action.detach().cpu().numpy()
             return action, 0
 
+    def init_weights(self):
+        if isinstance(self, nn.Linear):
+            weight_shape = list(self.weight.data.size())
+            fan_in = weight_shape[1]
+            fan_out = weight_shape[0]
+            w_bound = np.sqrt(6. / (fan_in + fan_out))
+            self.weight.data.uniform_(-w_bound, w_bound)
+            self.bias.data.fill_(0)
+        elif isinstance(self, nn.BatchNorm1d):
+            self.weight.data.fill_(1)
+            self.bias.data.zero_()
+
 
 class ValueNet(nn.Module):
     def __init__(self, num_states, num_hidden_cell, NN_type):
@@ -503,33 +500,21 @@ class ValueNet(nn.Module):
 
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
-                nn.Conv2d(num_states[-1], 16, kernel_size=3, stride=2, padding=1),  # n, 3, 128, 128
-                nn.BatchNorm2d(16),
+                nn.Conv2d(num_states[-1], 32, kernel_size=4, stride=2, padding=3),  # in: n, 3, 128, 128
                 nn.GELU(),
-
-                nn.Conv2d(16, 24, kernel_size=3, stride=2, padding=1),  # n, 16, 64, 64
-                nn.BatchNorm2d(24),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 33, 33
                 nn.GELU(),
-
-                nn.Conv2d(24, 32, kernel_size=3, stride=2, padding=1),  # n, 24, 32, 32
-                nn.BatchNorm2d(32),
-                nn.GELU(),
-
-                nn.Conv2d(32, 48, kernel_size=3, stride=2, padding=1),  # n, 32, 16, 16
-                nn.BatchNorm2d(48),
-                nn.GELU(),
-
-                nn.Conv2d(48, 64, kernel_size=3, stride=2, padding=1),  # n, 48, 8, 8
-                nn.BatchNorm2d(64),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 9, 9
                 nn.GELU(),)
             _conv_out_size = self._get_conv_out_size(num_states)
 
-            self.linear1 = nn.Linear(64*4*4, num_hidden_cell[0], bias=True)
-            self.linear2 = nn.Linear(num_hidden_cell[0], num_hidden_cell[1], bias=True)
-            self.linear3 = nn.Linear(num_hidden_cell[1] + 10, num_hidden_cell[2], bias=True)
-            self.linear4 = nn.Linear(num_hidden_cell[-1], 1, bias=True)
-
-        self.apply(init_weights)
+            self.linear1 = nn.Linear(32*6*6 + 10, num_hidden_cell, bias=True)
+            self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear3 = nn.Linear(num_hidden_cell, 1, bias=True)
+        self.init_weights()
+        # self.apply(init_weights)
 
     def _get_conv_out_size(self, num_states):
         out = self.conv_part(torch.zeros(num_states).unsqueeze(0).permute(0,3,1,2))
@@ -539,25 +524,37 @@ class ValueNet(nn.Module):
         if self.NN_type == "CNN":
             x = self.conv_part(state)
             x = x.view(state.size(0),-1)
-
+            x = torch.cat([x, info], 1)
             x = F.gelu(self.linear1(x))
             x = F.gelu(self.linear2(x))
-
-            x = torch.cat([x, info], 1)
-            x = F.gelu(self.linear3(x))
-            x = self.linear4(x)
-
+            x = self.linear3(x)
         return x
+    
+    def init_weights(self):
+        if isinstance(self, nn.Linear):
+            weight_shape = list(self.weight.data.size())
+            fan_in = weight_shape[1]
+            fan_out = weight_shape[0]
+            w_bound = np.sqrt(6. / (fan_in + fan_out))
+            self.weight.data.uniform_(-w_bound, w_bound)
+            self.bias.data.fill_(0)
+        elif isinstance(self, nn.BatchNorm1d):
+            self.weight.data.fill_(1)
+            self.bias.data.zero_()
 
 
-def init_weights(child_module):
-    if type(child_module) == nn.Linear:
-        nn.init.xavier_uniform_(child_module.weight)
-        child_module.bias.data.fill_(0)
+# def init_weights(child_module):
+#     if type(child_module) == nn.Linear:
+#         weight_shape = list(child_module.weight.data.size())
+#         fan_in = weight_shape[1]
+#         fan_out = weight_shape[0]
+#         w_bound = np.sqrt(6. / (fan_in + fan_out))
+#         child_module.weight.data.uniform_(-w_bound, w_bound)
+#         child_module.bias.data.fill_(0)
 
-    elif type(child_module) == nn.Conv2d:
-        nn.init.xavier_uniform_(child_module.weight)
-        child_module.bias.data.fill_(0)
+    # elif type(child_module) == nn.Conv2d:
+    #     nn.init.xavier_uniform_(child_module.weight)
+    #     child_module.bias.data.fill_(0)
 
 
 class Args(object):
@@ -565,7 +562,7 @@ class Args(object):
         self.state_dim = (128, 128, 3)
         self.action_dim = 2
         self.NN_type = 'CNN'
-        self.num_hidden_cell = [1024, 128, 64]
+        self.num_hidden_cell = 256
         self.action_high = [1.0, 1.0]
         self.action_low = [-1.0, -1.0]
         self.stochastic_actor = True
@@ -589,16 +586,19 @@ def test():
 
     args = Args()
     p_net = PolicyNet(args)
-    img = torch.rand((1, 3, 128, 128))
-    info = torch.rand((1, 10))
+    img = torch.rand((10, 3, 128, 128))
+    info = torch.rand((10, 10))
     action = torch.ones((10, 2))
+    q_net = QNet(args)
+    q_net.forward(img, info, action)
+    q_net.evaluate(img, info, action)
     # p_net.forward(img, info)
     # print(info.requires_grad)
     # p_net.get_action(img, info, True)
     # p_net.evaluate(img, info, False)
 
-    v_net = ValueNet((128, 128, 3), [1024, 1024, 64], 'CNN')
-    v_net.forward(img, info)
+    # v_net = ValueNet((128, 128, 3), 256, 'CNN')
+    # v_net.forward(img, info)
 
 
 if __name__ == "__main__":

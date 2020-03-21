@@ -50,7 +50,7 @@ def built_parser(method):
     parser.add_argument('--buffer_size_max', type=int, default=500000, help='replay memory size')
     parser.add_argument('--initial_buffer_size', type=int, default=2000, help='Learner waits until replay memory stores this number of transition')
     parser.add_argument('--batch_size', type=int, default=256)
-    parser.add_argument('--num_hidden_cell', type=int, default=[1024, 128, 64])
+    parser.add_argument('--num_hidden_cell', type=int, default=256)
 
     '''other setting'''
     parser.add_argument("--max_train", type=int, default=1200000)
@@ -62,7 +62,7 @@ def built_parser(method):
 
     '''parallel architecture'''
     parser.add_argument("--num_buffers", type=int, default=1)
-    parser.add_argument("--num_learners", type=int, default=1)
+    parser.add_argument("--num_learners", type=int, default=2)
     parser.add_argument("--num_actors", type=int, default=1)
 
     '''method list'''
@@ -263,7 +263,7 @@ def main(method):
         procs.append(Process(target=test_agent, args=(args, shared_value, [actor1, log_alpha])))
         # procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
         for i in range(args.num_learners):
-            device = torch.device("cuda")
+            device = torch.device("cuda:1")
             # device = torch.device("cpu")
             procs.append(Process(target=leaner_agent, args=(args, shared_queue, shared_value,share_net,share_optimizer,device,lock,i)))
     elif args.code_model=="simu":
