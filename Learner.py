@@ -260,6 +260,7 @@ class Learner():
                     torch.save(self.Q_net2.state_dict(),'./'+self.args.env_name+'/method_' + str(self.args.method) + '/model/Q2_' + str(self.iteration) + '.pkl')
                 if self.args.double_actor:
                     torch.save(self.actor2.state_dict(),'./' + self.args.env_name + '/method_' + str(self.args.method) + '/model/policy2_' + str(self.iteration) + '.pkl')
+
             if self.iteration%500  == 0 or self.iteration== 0 and self.agent_id==0:
                 print("agent",self.agent_id,"method",self.args.method,"iteration", self.iteration, "time",time.time() - self.init_time)
                 print("loss_1", q_loss_1, "alpha",self.alpha,"lr",self.scheduler_Q_net1.get_lr(), self.scheduler_Q_net2.get_lr(),self.scheduler_actor1.get_lr(),
