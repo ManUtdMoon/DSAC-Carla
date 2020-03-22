@@ -1,0 +1,128 @@
+2020-03-20 23:16:17 INFO     Env running in port 2006
+2020-03-20 23:16:17 INFO     connecting to Carla server...
+2020-03-20 23:20:58 INFO     Env running in port 2006
+2020-03-20 23:20:58 INFO     connecting to Carla server...
+2020-03-20 23:21:01 INFO     Carla server connected!
+2020-03-20 23:21:02 INFO     Ego car spawn Success!
+2020-03-20 23:21:30 INFO     Env running in port 2006
+2020-03-20 23:21:30 INFO     connecting to Carla server...
+2020-03-20 23:28:14 INFO     Env running in port 2006
+2020-03-20 23:28:14 INFO     connecting to Carla server...
+2020-03-21 18:09:09 INFO     Env running in port 2006
+2020-03-21 18:09:09 INFO     connecting to Carla server...
+2020-03-21 18:09:11 INFO     Carla server connected!
+2020-03-21 18:09:11 INFO     Ego car spawn Success!
+2020-03-21 18:10:00 INFO     Ego car spawn Success!
+2020-03-21 18:10:47 INFO     Ego car spawn Success!
+2020-03-21 18:11:33 INFO     Ego car spawn Success!
+2020-03-21 18:13:50 INFO     Env running in port 2006
+2020-03-21 18:13:50 INFO     connecting to Carla server...
+2020-03-21 18:13:53 INFO     Carla server connected!
+2020-03-21 18:13:53 INFO     Ego car spawn Success!
+2020-03-21 18:14:43 INFO     Ego car spawn Success!
+2020-03-21 18:15:31 INFO     Ego car spawn Success!
+2020-03-21 18:16:22 INFO     Ego car spawn Success!
+2020-03-21 18:17:13 INFO     Ego car spawn Success!
+2020-03-21 18:18:04 INFO     Ego car spawn Success!
+2020-03-21 18:18:56 INFO     Ego car spawn Success!
+2020-03-21 18:19:48 INFO     Ego car spawn Success!
+2020-03-21 18:20:40 INFO     Ego car spawn Success!
+2020-03-21 18:24:05 INFO     Env running in port 2006
+2020-03-21 18:24:05 INFO     connecting to Carla server...
+2020-03-21 18:24:08 INFO     Carla server connected!
+2020-03-21 18:24:08 INFO     Ego car spawn Success!
+2020-03-21 18:24:18 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:24:18 INFO     Ego car spawn Success!
+2020-03-21 18:24:25 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:24:25 INFO     Ego car spawn Success!
+2020-03-21 18:24:35 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:24:35 INFO     Ego car spawn Success!
+2020-03-21 18:24:42 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:24:42 INFO     Ego car spawn Success!
+2020-03-21 18:24:53 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:24:53 INFO     Ego car spawn Success!
+2020-03-21 18:25:03 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:25:03 INFO     Ego car spawn Success!
+2020-03-21 18:25:15 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:25:15 INFO     Ego car spawn Success!
+2020-03-21 18:25:23 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:25:23 INFO     Ego car spawn Success!
+2020-03-21 18:25:32 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:25:32 INFO     Ego car spawn Success!
+2020-03-21 18:25:40 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:25:40 INFO     Ego car spawn Success!
+2020-03-21 18:25:45 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:25:45 INFO     Ego car spawn Success!
+2020-03-21 18:25:53 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:25:53 INFO     Ego car spawn Success!
+2020-03-21 18:26:03 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:26:03 INFO     Ego car spawn Success!
+2020-03-21 18:26:10 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:26:10 INFO     Ego car spawn Success!
+2020-03-21 18:26:19 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:26:20 INFO     Ego car spawn Success!
+2020-03-21 18:26:23 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:26:23 INFO     Ego car spawn Success!
+2020-03-21 18:26:32 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:26:32 INFO     Ego car spawn Success!
+2020-03-21 18:26:40 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:26:40 INFO     Ego car spawn Success!
+2020-03-21 18:26:44 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:26:44 INFO     Ego car spawn Success!
+2020-03-21 18:26:54 INFO     lane invasion happened! Episode Done.
+2020-03-21 18:33:23 INFO     Env running in port 2006
+2020-03-21 18:33:23 INFO     connecting to Carla server...
+2020-03-21 18:33:25 INFO     Carla server connected!
+2020-03-21 18:33:26 INFO     Ego car spawn Success!
+2020-03-21 18:34:16 INFO     Ego car spawn Success!
+2020-03-21 18:44:57 INFO     Env running in port 2006
+2020-03-21 18:44:57 INFO     connecting to Carla server...
+2020-03-21 18:45:00 INFO     Carla server connected!
+2020-03-21 18:45:00 INFO     Ego car spawn Success!
+2020-03-21 18:45:51 INFO     Ego car spawn Success!
+2020-03-21 18:46:45 INFO     Ego car spawn Success!
+2020-03-21 18:47:42 INFO     Ego car spawn Success!
+2020-03-21 18:51:12 INFO     Env running in port 2006
+2020-03-21 18:51:12 INFO     connecting to Carla server...
+2020-03-21 18:51:15 INFO     Carla server connected!
+2020-03-21 18:51:15 INFO     Ego car spawn Success!
+2020-03-21 18:52:05 INFO     Ego car spawn Success!
+2020-03-21 18:52:54 INFO     Ego car spawn Success!
+2020-03-21 18:53:45 INFO     Ego car spawn Success!
+2020-03-21 18:54:36 INFO     Ego car spawn Success!
+2020-03-21 18:55:29 INFO     Ego car spawn Success!
+2020-03-21 18:56:20 INFO     Ego car spawn Success!
+2020-03-21 18:57:11 INFO     Ego car spawn Success!
+2020-03-21 18:58:03 INFO     Ego car spawn Success!
+2020-03-21 18:58:55 INFO     Ego car spawn Success!
+2020-03-21 19:28:35 INFO     Ego car spawn Success!
+2020-03-21 19:29:26 INFO     Ego car spawn Success!
+2020-03-21 19:30:17 INFO     Ego car spawn Success!
+2020-03-21 19:31:09 INFO     Ego car spawn Success!
+2020-03-21 19:32:00 INFO     Ego car spawn Success!
+2020-03-21 19:32:52 INFO     Ego car spawn Success!
+2020-03-21 19:33:43 INFO     Ego car spawn Success!
+2020-03-21 19:34:35 INFO     Ego car spawn Success!
+2020-03-21 19:35:26 INFO     Ego car spawn Success!
+2020-03-21 19:36:17 INFO     Ego car spawn Success!
+2020-03-21 20:04:05 INFO     Ego car spawn Success!
+2020-03-21 20:04:56 INFO     Ego car spawn Success!
+2020-03-21 20:05:47 INFO     Ego car spawn Success!
+2020-03-21 20:06:38 INFO     Ego car spawn Success!
+2020-03-21 20:07:29 INFO     Ego car spawn Success!
+2020-03-21 20:08:19 INFO     Ego car spawn Success!
+2020-03-21 20:09:11 INFO     Ego car spawn Success!
+2020-03-21 20:10:05 INFO     Ego car spawn Success!
+2020-03-21 20:10:56 INFO     Ego car spawn Success!
+2020-03-21 20:11:48 INFO     Ego car spawn Success!
+2020-03-21 20:39:34 INFO     Ego car spawn Success!
+2020-03-21 20:40:25 INFO     Ego car spawn Success!
+2020-03-21 20:41:16 INFO     Ego car spawn Success!
+2020-03-21 20:42:08 INFO     Ego car spawn Success!
+2020-03-21 20:42:59 INFO     Ego car spawn Success!
+2020-03-21 20:43:50 INFO     Ego car spawn Success!
+2020-03-21 20:44:42 INFO     Ego car spawn Success!
+2020-03-21 20:45:34 INFO     Ego car spawn Success!
+2020-03-21 20:46:25 INFO     Ego car spawn Success!
+2020-03-21 20:47:16 INFO     Ego car spawn Success!
+2020-03-21 21:19:30 INFO     Ego car spawn Success!

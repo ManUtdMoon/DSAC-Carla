@@ -47,10 +47,10 @@ def built_parser(method):
 
     '''hyper-parameters for soft-Q based algorithm'''
     parser.add_argument('--max_step', type=int, default=1000, help='maximum length of an episode')
-    parser.add_argument('--buffer_size_max', type=int, default=500000, help='replay memory size')
+    parser.add_argument('--buffer_size_max', type=int, default=300000, help='replay memory size')
     parser.add_argument('--initial_buffer_size', type=int, default=2000, help='Learner waits until replay memory stores this number of transition')
     parser.add_argument('--batch_size', type=int, default=256)
-    parser.add_argument('--num_hidden_cell', type=int, default=[1024, 128, 64])
+    parser.add_argument('--num_hidden_cell', type=int, default=256)
 
     '''other setting'''
     parser.add_argument("--max_train", type=int, default=1200000)
@@ -61,9 +61,9 @@ def built_parser(method):
     parser.add_argument('--seed', type=int, default=1, help='initial seed (default: 1)')
 
     '''parallel architecture'''
-    parser.add_argument("--num_buffers", type=int, default=1)
-    parser.add_argument("--num_learners", type=int, default=1)
-    parser.add_argument("--num_actors", type=int, default=1)
+    parser.add_argument("--num_buffers", type=int, default=2)
+    parser.add_argument("--num_learners", type=int, default=3)
+    parser.add_argument("--num_actors", type=int, default=2)
 
     '''method list'''
     parser.add_argument("--method", type=int, default=method)
@@ -263,7 +263,10 @@ def main(method):
         procs.append(Process(target=test_agent, args=(args, shared_value, [actor1, log_alpha])))
         # procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
         for i in range(args.num_learners):
-            device = torch.device("cuda")
+            if i == 0:
+                device = torch.device("cuda:0")
+            else:
+                device = torch.device("cuda:1")
             # device = torch.device("cpu")
             procs.append(Process(target=leaner_agent, args=(args, shared_queue, shared_value,share_net,share_optimizer,device,lock,i)))
     elif args.code_model=="simu":

@@ -56,7 +56,7 @@ class Test():
             'obs_size': 128,  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
-            'port': 2003,  # connection port
+            'port': 2006,  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'train',
             'max_time_episode': 1000,  # maximum timesteps per episode
@@ -154,7 +154,7 @@ class Test():
                 np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/alpha',
                         np.array(self.alpha_history))
 
-                plot_online(self.args.env_name, self.args.method, self.args.method_name)
+                #plot_online(self.args.env_name, self.args.method, self.args.method_name)
 
                 if self.iteration >= self.args.max_train:
                     self.stop_sign.value = 1
