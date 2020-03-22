@@ -24,7 +24,7 @@ class Actor():
             'port': int(2000+3*self.agent_id),  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'train',
-            'max_time_episode': 1000,  # maximum timesteps per episode
+            'max_time_episode': 500,  # maximum timesteps per episode
             'desired_speed': 8,  # desired speed (m/s)
             'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
         }
