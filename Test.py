@@ -56,7 +56,7 @@ class Test():
             'obs_size': 128,  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
-            'port': 2006,  # connection port
+            'port': 2012,  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'test',
             'max_time_episode': 500,  # maximum timesteps per episode
