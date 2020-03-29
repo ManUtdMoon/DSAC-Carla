@@ -5,8 +5,15 @@ import torch.nn as nn
 import torch.utils.data as Data
 import torch.nn.functional as F
 from torch.distributions import Normal
-import math
 
+import math
+import sys
+
+def conv_block(in_channel, out_channel, kernel_size, stride):
+    return nn.Sequential(
+        nn.Conv2d(in_channel, out_channel, kernel_size=kernel_size, stride=stride),
+        nn.BatchNorm2d(num_features=out_channel),
+        nn.GELU(),)
 
 class QNet(nn.Module):
     def __init__(self, args,log_std_min=-6, log_std_max=6):
@@ -17,20 +24,38 @@ class QNet(nn.Module):
         self.NN_type = args.NN_type
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
-                nn.Conv2d(num_states[-1], 32, kernel_size=4, stride=2, padding=3),  # in: n, 3, 128, 128
+                nn.Conv2d(num_states[-1], 32, kernel_size=5, stride=2),  # in: n, 3, 160, 100
+                nn.BatchNorm2d(num_features=32),
                 nn.GELU(),
-                nn.MaxPool2d(kernel_size=2, stride=2),
-                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 33, 33
+                nn.Conv2d(32, 32, kernel_size=3, stride=1),  # in: n, 32, 78, 48
+                nn.BatchNorm2d(num_features=32),
                 nn.GELU(),
-                nn.MaxPool2d(kernel_size=2, stride=2),
-                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 9, 9
+                nn.Conv2d(32, 64, kernel_size=3, stride=2),  # in: n, 32, 76, 46
+                nn.BatchNorm2d(num_features=64),
+                nn.GELU(),
+                nn.Conv2d(64, 64, kernel_size=3, stride=1),  # in: n, 64, 37, 22
+                nn.BatchNorm2d(num_features=64),
+                nn.GELU(),
+                nn.Conv2d(64, 128, kernel_size=3, stride=2),  # in: n, 64, 35, 20
+                nn.BatchNorm2d(num_features=128),
+                nn.GELU(),
+                nn.Conv2d(128, 128, kernel_size=3, stride=1),  # in: n, 128, 17, 9
+                nn.BatchNorm2d(num_features=128),
+                nn.GELU(),
+                nn.Conv2d(128, 256, kernel_size=3, stride=2),  # in: n, 128, 15, 7
+                nn.BatchNorm2d(num_features=256),
+                nn.GELU(),
+                nn.Conv2d(256, 256, kernel_size=3, stride=1),  # in: n, 256, 7, 3
+                nn.BatchNorm2d(num_features=256),
                 nn.GELU(),)
             _conv_out_size = self._get_conv_out_size(num_states)
-            # n, 32, 6, 6 -> 256
-            self.linear1 = nn.Linear(32*6*6 + 10 + num_action, num_hidden_cell, bias=True)
+            # n, 256, 5, 1 -> 256
+            self.linear_img = nn.Linear(256 * 5 * 1, num_hidden_cell, bias=True)
+            self.linear_info = nn.Linear(10 + num_action, 128, bias=True)
+            self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
 
-        # the size of info tensor is (9,1)
+        # the size of info tensor is (10,1)
         self.mean_layer = nn.Linear(num_hidden_cell, 1, bias=True)
         self.log_std_layer = nn.Linear(num_hidden_cell, 1, bias=True)
         self.log_std_min = log_std_min
@@ -44,9 +69,12 @@ class QNet(nn.Module):
 
     def forward(self, state, info, action):
         if self.NN_type == "CNN":
-            x = self.conv_part(state)
-            x = x.view(state.size(0),-1)
-            x = torch.cat([x, info, action], 1)
+            x1 = self.conv_part(state)
+            x1 = x1.view(state.size(0),-1)
+            x1 = F.gelu(self.linear_img(x1))
+
+            x2 = F.gelu(self.linear_info(torch.cat([info, action], 1)))
+            x = torch.cat([x1, x2], 1)
 
             x = F.gelu(self.linear1(x))
             x = F.gelu(self.linear2(x))
@@ -100,18 +128,20 @@ class PolicyNet(nn.Module):
 
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
-                nn.Conv2d(num_states[-1], 32, kernel_size=4, stride=2, padding=3),  # in: n, 3, 128, 128
-                nn.GELU(),
-                nn.MaxPool2d(kernel_size=2, stride=2),
-                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 33, 33
-                nn.GELU(),
-                nn.MaxPool2d(kernel_size=2, stride=2),
-                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 9, 9
-                nn.GELU(),)
+                conv_block(in_channel=num_states[-1], out_channel=32, kernel_size=5, stride=2),
+                conv_block(in_channel=32, out_channel=32, kernel_size=3, stride=1),
+                conv_block(in_channel=32, out_channel=64, kernel_size=3, stride=2),
+                conv_block(in_channel=64, out_channel=64, kernel_size=3, stride=1),
+                conv_block(in_channel=64, out_channel=128, kernel_size=3, stride=2),
+                conv_block(in_channel=128, out_channel=128, kernel_size=3, stride=1),
+                conv_block(in_channel=128, out_channel=256, kernel_size=3, stride=2),
+                conv_block(in_channel=256, out_channel=256, kernel_size=3, stride=1),)
             _conv_out_size = self._get_conv_out_size(num_states)
 
             # n, 32, 6, 6 -> 256
-            self.linear1 = nn.Linear(32*6*6 + 10, num_hidden_cell, bias=True)
+            self.linear_img = nn.Linear(256 * 5 * 1, num_hidden_cell, bias=True)
+            self.linear_info = nn.Linear(10, 128, bias=True)
+            self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
 
         self.mean_layer = nn.Linear(num_hidden_cell, len(action_high), bias=True)
@@ -132,9 +162,13 @@ class PolicyNet(nn.Module):
 
     def forward(self, state, info):
         if self.NN_type == "CNN":
-            x = self.conv_part(state)
-            x = x.view(state.size(0),-1)
-            x = torch.cat([x, info], 1)
+            x1 = self.conv_part(state)
+            x1 = x1.view(state.size(0),-1)
+            x1 = F.gelu(self.linear_img(x1))
+
+            x2 = F.gelu(self.linear_info(info))
+            x = torch.cat([x1, x2], 1)
+
             x = F.gelu(self.linear1(x))
             x = F.gelu(self.linear2(x))
 
@@ -213,19 +247,22 @@ class ValueNet(nn.Module):
 
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
-                nn.Conv2d(num_states[-1], 32, kernel_size=4, stride=2, padding=3),  # in: n, 3, 128, 128
-                nn.GELU(),
-                nn.MaxPool2d(kernel_size=2, stride=2),
-                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 33, 33
-                nn.GELU(),
-                nn.MaxPool2d(kernel_size=2, stride=2),
-                nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),  # in: n, 32, 9, 9
-                nn.GELU(),)
+                conv_block(in_channel=num_states[-1], out_channel=32, kernel_size=5, stride=2),
+                conv_block(in_channel=32, out_channel=32, kernel_size=3, stride=1),
+                conv_block(in_channel=32, out_channel=64, kernel_size=3, stride=2),
+                conv_block(in_channel=64, out_channel=64, kernel_size=3, stride=1),
+                conv_block(in_channel=64, out_channel=128, kernel_size=3, stride=2),
+                conv_block(in_channel=128, out_channel=128, kernel_size=3, stride=1),
+                conv_block(in_channel=128, out_channel=256, kernel_size=3, stride=2),
+                conv_block(in_channel=256, out_channel=256, kernel_size=3, stride=1),)
             _conv_out_size = self._get_conv_out_size(num_states)
 
-            self.linear1 = nn.Linear(32*6*6 + 10, num_hidden_cell, bias=True)
+            self.linear_img = nn.Linear(256 * 5 * 1, num_hidden_cell, bias=True)
+            self.linear_info = nn.Linear(10, 128, bias=True)
+            self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
             self.linear3 = nn.Linear(num_hidden_cell, 1, bias=True)
+
         self.init_weights()
         # self.apply(init_weights)
 
@@ -235,9 +272,13 @@ class ValueNet(nn.Module):
 
     def forward(self, state, info):
         if self.NN_type == "CNN":
-            x = self.conv_part(state)
-            x = x.view(state.size(0),-1)
-            x = torch.cat([x, info], 1)
+            x1 = self.conv_part(state)
+            x1 = x1.view(state.size(0),-1)
+            x1 = F.gelu(self.linear_img(x1))
+
+            x2 = F.gelu(self.linear_info(info))
+            x = torch.cat([x1, x2], 1)
+
             x = F.gelu(self.linear1(x))
             x = F.gelu(self.linear2(x))
             x = self.linear3(x)
@@ -262,7 +303,7 @@ class ValueNet(nn.Module):
 
 class Args(object):
     def __init__(self):
-        self.state_dim = (128, 128, 3)
+        self.state_dim = (100, 160, 3)
         self.action_dim = 2
         self.NN_type = 'CNN'
         self.num_hidden_cell = 256
@@ -288,21 +329,23 @@ def test():
     # print(bb.sum(-1, keepdim=True))
 
     args = Args()
-    img = torch.rand((10, 3, 128, 128))
+    img = torch.rand((10, 3, 160, 100))
     info = torch.rand((10, 10))
     action = torch.ones((10, 2))
     # q_net = QNet(args)
     # print(q_net.forward(img, info, action))
     # print(q_net.evaluate(img, info, action))
 
-    # p_net = PolicyNet(args)
+    p_net = PolicyNet(args)
+    total_num = sum(p.numel() for p in p_net.parameters())
+    print(total_num)
     # p_net.forward(img, info)
     # print(info.requires_grad)
-    # p_net.get_action(img, info, True)
+    # print(p_net.get_action(img, info, True))
     # p_net.evaluate(img, info, False)
 
-    v_net = ValueNet((128, 128, 3), 256, 'CNN')
-    v_net.forward(img, info)
+    # v_net = ValueNet((160, 100, 3), 256, 'CNN')
+    # v_net.forward(img, info)
 
 
 if __name__ == "__main__":
