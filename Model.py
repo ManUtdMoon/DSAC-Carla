@@ -51,7 +51,7 @@ class QNet(nn.Module):
             _conv_out_size = self._get_conv_out_size(num_states)
             # n, 256, 5, 1 -> 256
             self.linear_img = nn.Linear(256 * 5 * 1, num_hidden_cell, bias=True)
-            self.linear_info = nn.Linear(10 + num_action, 128, bias=True)
+            self.linear_info = nn.Linear(12 + num_action, 128, bias=True)
             self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
 
@@ -140,7 +140,7 @@ class PolicyNet(nn.Module):
 
             # n, 32, 6, 6 -> 256
             self.linear_img = nn.Linear(256 * 5 * 1, num_hidden_cell, bias=True)
-            self.linear_info = nn.Linear(10, 128, bias=True)
+            self.linear_info = nn.Linear(12, 128, bias=True)
             self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
 
@@ -258,7 +258,7 @@ class ValueNet(nn.Module):
             _conv_out_size = self._get_conv_out_size(num_states)
 
             self.linear_img = nn.Linear(256 * 5 * 1, num_hidden_cell, bias=True)
-            self.linear_info = nn.Linear(10, 128, bias=True)
+            self.linear_info = nn.Linear(12, 128, bias=True)
             self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
             self.linear3 = nn.Linear(num_hidden_cell, 1, bias=True)
@@ -330,19 +330,19 @@ def test():
 
     args = Args()
     img = torch.rand((10, 3, 160, 100))
-    info = torch.rand((10, 10))
+    info = torch.rand((10, 12))
     action = torch.ones((10, 2))
     # q_net = QNet(args)
     # print(q_net.forward(img, info, action))
     # print(q_net.evaluate(img, info, action))
 
     p_net = PolicyNet(args)
-    total_num = sum(p.numel() for p in p_net.parameters())
-    print(total_num)
-    # p_net.forward(img, info)
+    # total_num = sum(p.numel() for p in p_net.parameters())
+    # print(total_num)
+    p_net.forward(img, info)
     # print(info.requires_grad)
     # print(p_net.get_action(img, info, True))
-    # p_net.evaluate(img, info, False)
+    p_net.evaluate(img, info, False)
 
     # v_net = ValueNet((160, 100, 3), 256, 'CNN')
     # v_net.forward(img, info)

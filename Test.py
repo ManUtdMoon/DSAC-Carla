@@ -53,7 +53,7 @@ class Test():
         torch.manual_seed(seed)
 
         test_params = {
-            'obs_size': 128,  # screen size of cv2 window
+            'obs_size': (160, 100),  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': 2012,  # connection port
@@ -84,11 +84,14 @@ class Test():
         self.average_return_with_diff_base_history = []
         self.average_reward_history = []
         self.iteration_history = []
-
+        self.accel_history = []
+        self.steer_history = []
 
 
     def run_an_episode(self):
         reward_list = []
+        accel_list = []
+        steer_list = []
         done = 0
         state, info_dict = self.env.reset()
         info = info_dict_to_array(info_dict)
@@ -105,27 +108,42 @@ class Test():
 
             #self.env.render(mode='human')
             reward_list.append(reward)
+            accel_list.append(u[0])
+            steer_list.append(u[1])
+
         episode_return = sum(reward_list)
         episode_len = len(reward_list)
-        return np.array(reward_list), episode_return, episode_len
+        episode_accel = np.mean(accel_list)
+        episode_steer = np.mean(steer_list)
+
+        return np.array(reward_list), episode_return, episode_len, episode_accel, episode_steer
+
 
     def average_max_n(self, list_for_average, n):
         sorted_list = sorted(list_for_average, reverse=True)
         return sum(sorted_list[:n]) / n
+
 
     def run_n_episodes(self, n):
         assert n >= 5, "n must be at least 5"
         list_of_n_episode_rewards = []
         list_of_return = []
         list_of_len = []
+        list_of_accel = []
+        list_of_steer = []
         for _ in range(n):
-            reward_list, episode_return, episode_len = self.run_an_episode()
-            list_of_n_episode_rewards.append(self.run_an_episode())
+            reward_list, episode_return, episode_len, episode_accel, episode_steer = self.run_an_episode()
+            list_of_n_episode_rewards.append(reward_list)
             list_of_return.append(episode_return)
             list_of_len.append(episode_len)
+            list_of_accel.append(episode_accel)
+            list_of_steer.append(episode_steer)
+
         average_return_with_diff_base = np.array([self.average_max_n(list_of_return, x) for x in [1, 3, 5]])
         average_reward = sum(list_of_return)/sum(list_of_len)
-        return np.array(list_of_n_episode_rewards), average_return_with_diff_base, average_reward
+        avg_accel = sum(list_of_accel) / sum(list_of_len)
+        avg_steer = sum(list_of_steer) / sum(list_of_len)
+        return np.array(list_of_n_episode_rewards), average_return_with_diff_base, average_reward, avg_accel, avg_steer
 
     def run(self):
         while not self.stop_sign.value:
@@ -133,13 +151,15 @@ class Test():
                 self.iteration = self.iteration_counter.value
                 self.actor.load_state_dict(self.actor_share.state_dict())
                 delta_time = time.time() - self.start_time
-                list_of_n_episode_rewards, average_return_with_diff_base, average_reward = self.run_n_episodes(self.episode_num)
+                list_of_n_episode_rewards, average_return_with_diff_base, average_reward, avg_accel, avg_steer = self.run_n_episodes(self.episode_num)
                 self.iteration_history.append(self.iteration)
                 self.time_history.append(delta_time)
                 self.list_of_n_episode_rewards_history.append(list_of_n_episode_rewards)
                 self.average_return_with_diff_base_history.append(average_return_with_diff_base)
                 self.average_reward_history.append(average_reward)
                 self.alpha_history.append(self.log_alpha.detach().exp().item())
+                self.accel_history.append(avg_accel)
+                self.steer_history.append(avg_steer)
                 print('Saving test data of the {} iteration.'.format(self.iteration))
                 np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/iteration',
                         np.array(self.iteration_history))
@@ -153,6 +173,10 @@ class Test():
                         np.array(self.average_reward_history))
                 np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/alpha',
                         np.array(self.alpha_history))
+                np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/accel',
+                        np.array(self.accel_history))
+                np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/steer',
+                        np.array(self.steer_history))
 
                 #plot_online(self.args.env_name, self.args.method, self.args.method_name)
 

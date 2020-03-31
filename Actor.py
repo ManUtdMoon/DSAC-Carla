@@ -18,7 +18,7 @@ class Actor():
         torch.manual_seed(seed)
 
         self.actor_params = {
-            'obs_size': 128,  # screen size of cv2 window
+            'obs_size': (160, 100),  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': int(2000+3*self.agent_id),  # connection port

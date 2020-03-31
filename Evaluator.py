@@ -61,12 +61,12 @@ class Evaluator(object):
         torch.manual_seed(seed)
 
         eval_params = {
-            'obs_size': 128,  # screen size of cv2 window
+            'obs_size': (160, 100),  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': 2015,  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
-            'code_mode': 'train',
+            'code_mode': 'test',
             'max_time_episode': 500,  # maximum timesteps per episode
             'desired_speed': 8,  # desired speed (m/s)
             'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle

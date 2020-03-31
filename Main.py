@@ -154,7 +154,7 @@ def simu_agent(args, shared_value):
 def main(method):
 
     params = {
-        'obs_size': 128,  # screen size of cv2 window
+        'obs_size': (160, 100),  # screen size of cv2 window
         'dt': 0.1,  # time interval between two frames
         'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
         'port': 2000,  # connection port
@@ -261,7 +261,7 @@ def main(method):
         for i in range(args.num_buffers):
             procs.append(Process(target=buffer, args=(args, shared_queue, shared_value,i)))
         procs.append(Process(target=test_agent, args=(args, shared_value, [actor1, log_alpha])))
-        # procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
+        procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
         for i in range(args.num_learners):
             if i == 0:
                 device = torch.device("cuda:0")
@@ -282,7 +282,7 @@ if __name__ == '__main__':
     os.environ["OMP_NUM_THREADS"] = "1"
     #os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-    for i in range(0,1,1):
+    for i in [1]:
         main(i)
 
 

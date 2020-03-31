@@ -20,7 +20,7 @@ class Simulation():
         simu_params = {
             'number_of_vehicles': 0,
             'number_of_walkers': 0,
-            'obs_size': 256,  # screen size of cv2 window
+            'obs_size': (160, 100),  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': 2003,  # connection port

@@ -75,16 +75,18 @@ def slow_sync_param(model, target_model,  tau, gpu):
 
 def info_dict_to_array(info):
     '''
-    params: dict of ego state(velocity_t, accelearation_t, dist, command)
+    params: dict of ego state(velocity_t, accelearation_t, dist, command, delta_yaw_t, dyaw_dt_t)
     type: np.array
-    return: array of size[10,], torch.Tensor (v, a, d, c)
+    return: array of size[12,], torch.Tensor (v, a, delta_yaw, dyaw, d, c)
     '''
     velocity_t = info['velocity_t']
     accel_t = info['acceleration_t']
     dist_t = info['dist_to_dest'].reshape((1,1))
     command_t = info['direction']
+    delta_yaw_t = info['delta_yaw_t'].reshape((1,1))
+    dyaw_dt_t = info['dyaw_dt_t'].reshape((1,1))
 
-    info_vec = np.concatenate([velocity_t, accel_t, dist_t, command_t], axis=0)
+    info_vec = np.concatenate([velocity_t, accel_t, delta_yaw_t, dyaw_dt_t, dist_t, command_t], axis=0)
     info_vec = info_vec.squeeze()
 
     return  info_vec
