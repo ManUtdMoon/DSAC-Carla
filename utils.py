@@ -83,8 +83,8 @@ def info_dict_to_array(info):
     accel_t = info['acceleration_t']
     dist_t = info['dist_to_dest'].reshape((1,1))
     command_t = info['direction']
-    delta_yaw_t = info['delta_yaw_t'].reshape((1,1))
-    dyaw_dt_t = info['dyaw_dt_t'].reshape((1,1))
+    delta_yaw_t = np.array(info['delta_yaw_t']).reshape((1,1))
+    dyaw_dt_t = np.array(info['dyaw_dt_t']).reshape((1,1))
 
     info_vec = np.concatenate([velocity_t, accel_t, delta_yaw_t, dyaw_dt_t, dist_t, command_t], axis=0)
     info_vec = info_vec.squeeze()
