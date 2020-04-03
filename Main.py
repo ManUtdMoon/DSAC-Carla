@@ -30,7 +30,7 @@ def built_parser(method):
     parser.add_argument('--action_high', dest='list', type=float, default=[],action="append")
     parser.add_argument('--action_low', dest='list', type=float, default=[],action="append")
     parser.add_argument("--NN_type", default="CNN", help='mlp or CNN')
-    parser.add_argument("--code_model", default="train", help='train or simu')
+    parser.add_argument("--code_model", default="simu", help='train or simu')
 
     '''general hyper-parameters'''
     parser.add_argument('--critic_lr' , type=float, default=0.00008,help='critic learning rate')

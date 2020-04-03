@@ -1,0 +1,88 @@
+2020-04-03 11:57:28 INFO     Env running in port 2000
+2020-04-03 11:57:28 INFO     connecting to Carla server...
+2020-04-03 11:57:30 INFO     Carla server port 2000 connected!
+2020-04-03 11:57:30 INFO     Env running in port 2000
+2020-04-03 11:57:30 INFO     Env running in port 2000
+2020-04-03 11:57:30 INFO     connecting to Carla server...
+2020-04-03 11:57:30 INFO     connecting to Carla server...
+2020-04-03 11:57:32 INFO     Carla server port 2000 connected!
+2020-04-03 11:57:32 INFO     Carla server port 2000 connected!
+2020-04-03 11:57:46 DEBUG    Speed too fast! Episode Done.
+2020-04-03 11:57:46 DEBUG    Speed too fast! Episode Done.
+2020-04-03 13:49:46 INFO     Env running in port 2000
+2020-04-03 13:49:46 INFO     connecting to Carla server...
+2020-04-03 13:49:48 INFO     Carla server port 2000 connected!
+2020-04-03 13:49:48 INFO     Env running in port 2000
+2020-04-03 13:49:48 INFO     Env running in port 2000
+2020-04-03 13:49:48 INFO     connecting to Carla server...
+2020-04-03 13:49:48 INFO     connecting to Carla server...
+2020-04-03 13:49:50 INFO     Carla server port 2000 connected!
+2020-04-03 13:49:50 INFO     Carla server port 2000 connected!
+2020-04-03 13:50:04 DEBUG    Speed too fast! Episode Done.
+2020-04-03 13:50:04 DEBUG    Speed too fast! Episode Done.
+2020-04-03 13:52:54 INFO     Env running in port 2000
+2020-04-03 13:52:54 INFO     connecting to Carla server...
+2020-04-03 13:52:56 INFO     Carla server port 2000 connected!
+2020-04-03 13:52:56 INFO     Env running in port 2000
+2020-04-03 13:52:56 INFO     Env running in port 2000
+2020-04-03 13:52:56 INFO     connecting to Carla server...
+2020-04-03 13:52:56 INFO     connecting to Carla server...
+2020-04-03 13:52:58 INFO     Carla server port 2000 connected!
+2020-04-03 13:52:58 INFO     Carla server port 2000 connected!
+2020-04-03 13:53:13 DEBUG    Get destination! Episode Done.
+2020-04-03 13:53:13 DEBUG    Get destination! Episode Done.
+2020-04-03 13:54:27 INFO     Env running in port 2000
+2020-04-03 13:54:27 INFO     connecting to Carla server...
+2020-04-03 13:54:28 INFO     Carla server port 2000 connected!
+2020-04-03 13:54:29 INFO     Env running in port 2000
+2020-04-03 13:54:29 INFO     Env running in port 2000
+2020-04-03 13:54:29 INFO     connecting to Carla server...
+2020-04-03 13:54:29 INFO     connecting to Carla server...
+2020-04-03 13:54:30 INFO     Carla server port 2000 connected!
+2020-04-03 13:54:30 INFO     Carla server port 2000 connected!
+2020-04-03 13:54:44 DEBUG    Speed too fast! Episode Done.
+2020-04-03 13:54:44 DEBUG    Speed too fast! Episode Done.
+2020-04-03 13:57:01 INFO     Env running in port 2000
+2020-04-03 13:57:01 INFO     connecting to Carla server...
+2020-04-03 13:57:03 INFO     Carla server port 2000 connected!
+2020-04-03 13:57:03 INFO     Env running in port 2000
+2020-04-03 13:57:03 INFO     Env running in port 2000
+2020-04-03 13:57:03 INFO     connecting to Carla server...
+2020-04-03 13:57:03 INFO     connecting to Carla server...
+2020-04-03 13:57:05 INFO     Carla server port 2000 connected!
+2020-04-03 13:57:05 INFO     Carla server port 2000 connected!
+2020-04-03 13:57:20 DEBUG    Get destination! Episode Done.
+2020-04-03 13:57:20 DEBUG    Get destination! Episode Done.
+2020-04-03 14:00:53 INFO     Env running in port 2000
+2020-04-03 14:00:53 INFO     connecting to Carla server...
+2020-04-03 14:00:55 INFO     Carla server port 2000 connected!
+2020-04-03 14:00:55 INFO     Env running in port 2000
+2020-04-03 14:00:55 INFO     Env running in port 2000
+2020-04-03 14:00:55 INFO     connecting to Carla server...
+2020-04-03 14:00:55 INFO     connecting to Carla server...
+2020-04-03 14:00:57 INFO     Carla server port 2000 connected!
+2020-04-03 14:00:57 INFO     Carla server port 2000 connected!
+2020-04-03 14:01:09 DEBUG    Lane invasion happened! Episode Done.
+2020-04-03 14:01:09 DEBUG    Lane invasion happened! Episode Done.
+2020-04-03 14:07:10 INFO     Env running in port 2000
+2020-04-03 14:07:10 INFO     connecting to Carla server...
+2020-04-03 14:07:12 INFO     Carla server port 2000 connected!
+2020-04-03 14:07:12 INFO     Env running in port 2000
+2020-04-03 14:07:12 INFO     Env running in port 2000
+2020-04-03 14:07:12 INFO     connecting to Carla server...
+2020-04-03 14:07:12 INFO     connecting to Carla server...
+2020-04-03 14:07:14 INFO     Carla server port 2000 connected!
+2020-04-03 14:07:14 INFO     Carla server port 2000 connected!
+2020-04-03 14:07:28 DEBUG    Lane invasion happened! Episode Done.
+2020-04-03 14:07:28 DEBUG    Lane invasion happened! Episode Done.
+2020-04-03 14:10:57 INFO     Env running in port 2000
+2020-04-03 14:10:57 INFO     connecting to Carla server...
+2020-04-03 14:10:59 INFO     Carla server port 2000 connected!
+2020-04-03 14:10:59 INFO     Env running in port 2000
+2020-04-03 14:10:59 INFO     Env running in port 2000
+2020-04-03 14:10:59 INFO     connecting to Carla server...
+2020-04-03 14:10:59 INFO     connecting to Carla server...
+2020-04-03 14:11:01 INFO     Carla server port 2000 connected!
+2020-04-03 14:11:01 INFO     Carla server port 2000 connected!
+2020-04-03 14:11:16 DEBUG    Get destination! Episode Done.
+2020-04-03 14:11:16 DEBUG    Get destination! Episode Done.

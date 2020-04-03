@@ -9,6 +9,7 @@ import gym
 import matplotlib.pyplot as plt
 from utils import *
 import cv2
+from torch.utils.tensorboard import SummaryWriter
 
 class Simulation():
     def __init__(self, args,shared_value):
@@ -23,7 +24,7 @@ class Simulation():
             'obs_size': (160, 100),  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
-            'port': 2003,  # connection port
+            'port': 2000,  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'test',
             'max_time_episode': 500,  # maximum timesteps per episode
@@ -35,7 +36,8 @@ class Simulation():
         self.args = args
         self.env = gym.make(args.env_name, params=simu_params)
         self.device = torch.device("cpu")
-        self.load_index = self.args.max_train
+        # self.load_index = self.args.max_train
+        self.load_index = 240000
 
         self.actor = PolicyNet(args).to(self.device)
         self.actor.load_state_dict(torch.load('./'+self.args.env_name+'/method_' + str(self.args.method) + '/model/policy1_' + str(self.load_index) + '.pkl',map_location='cpu'))
@@ -46,7 +48,6 @@ class Simulation():
         if self.args.double_Q:
             self.Q_net2 = QNet(args).to(self.device)
             self.Q_net2.load_state_dict(torch.load('./'+self.args.env_name+'/method_' + str(self.args.method) + '/model/Q2_' + str(self.load_index) + '.pkl',map_location='cpu'))
-
 
         self.test_step = 0
         self.save_interval = 10000
@@ -69,24 +70,33 @@ class Simulation():
             self.info = info_dict_to_array(self.info_dict)
             self.episode_step = 0
             state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
-            info_tensor = torch.FloatTensor(info.copy()).float().to(self.device)
+            info_tensor = torch.FloatTensor(self.info.copy()).float().to(self.device)
 
             if self.args.NN_type == "CNN":
                 state_tensor = state_tensor.permute(2, 0, 1)
             self.u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
 
 
-            for i in range(300):
+            for i in range(500):
                 q = self.Q_net1(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0]
                 if self.args.double_Q:
                     q = torch.min(
                         q,
                         self.Q_net2(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0])
 
-
                 self.Q_history.append(q.detach().item())
 
                 self.u = self.u.squeeze(0)
+
+                # TODO
+                with SummaryWriter(log_dir='./logs') as writer:
+                    writer.add_scalar('accel', self.u[0], i)
+                    writer.add_scalar('steer', self.u[1], i)
+                    writer.add_scalar('random', np.random.randint(0, 10), i)
+                    v = self.env.ego.get_velocity()
+                    v = np.array([v.x, v.y, v.z])
+                    writer.add_scalar('velocity', np.linalg.norm(v), i)
+
                 self.state, self.reward, self.done, self.info_dict = self.env.step(self.u)
                 self.info = info_dict_to_array(self.info_dict)
 
@@ -100,7 +110,7 @@ class Simulation():
                 # if step%10000 >=0 and step%10000 <=9999:
                 #     self.env.render(mode='human')
                 state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
-                info_tensor = torch.FloatTensor(info.copy()).float().to(self.device)
+                info_tensor = torch.FloatTensor(self.info.copy()).float().to(self.device)
 
                 if self.args.NN_type == "CNN":
                     state_tensor = state_tensor.permute(2, 0, 1)
@@ -110,7 +120,8 @@ class Simulation():
 
                 if self.done == True:
                     time.sleep(1)
-                    print("Episode Done!")
+                    print("---------------Episode Done!---------------")
+                    return
                     break
                 step += 1
                 self.episode_step += 1
