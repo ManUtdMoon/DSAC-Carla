@@ -23,7 +23,7 @@ class Simulation():
             'obs_size': (160, 100),  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
-            'port': 2003,  # connection port
+            'port': 2000,  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'test',
             'max_time_episode': 500,  # maximum timesteps per episode
@@ -35,7 +35,8 @@ class Simulation():
         self.args = args
         self.env = gym.make(args.env_name, params=simu_params)
         self.device = torch.device("cpu")
-        self.load_index = self.args.max_train
+        # self.load_index = self.args.max_train
+        self.load_index = 40000
 
         self.actor = PolicyNet(args).to(self.device)
         self.actor.load_state_dict(torch.load('./'+self.args.env_name+'/method_' + str(self.args.method) + '/model/policy1_' + str(self.load_index) + '.pkl',map_location='cpu'))

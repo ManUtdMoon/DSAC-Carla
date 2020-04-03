@@ -24,30 +24,14 @@ class QNet(nn.Module):
         self.NN_type = args.NN_type
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
-                nn.Conv2d(num_states[-1], 32, kernel_size=5, stride=2),  # in: n, 3, 160, 100
-                nn.BatchNorm2d(num_features=32),
-                nn.GELU(),
-                nn.Conv2d(32, 32, kernel_size=3, stride=1),  # in: n, 32, 78, 48
-                nn.BatchNorm2d(num_features=32),
-                nn.GELU(),
-                nn.Conv2d(32, 64, kernel_size=3, stride=2),  # in: n, 32, 76, 46
-                nn.BatchNorm2d(num_features=64),
-                nn.GELU(),
-                nn.Conv2d(64, 64, kernel_size=3, stride=1),  # in: n, 64, 37, 22
-                nn.BatchNorm2d(num_features=64),
-                nn.GELU(),
-                nn.Conv2d(64, 128, kernel_size=3, stride=2),  # in: n, 64, 35, 20
-                nn.BatchNorm2d(num_features=128),
-                nn.GELU(),
-                nn.Conv2d(128, 128, kernel_size=3, stride=1),  # in: n, 128, 17, 9
-                nn.BatchNorm2d(num_features=128),
-                nn.GELU(),
-                nn.Conv2d(128, 256, kernel_size=3, stride=2),  # in: n, 128, 15, 7
-                nn.BatchNorm2d(num_features=256),
-                nn.GELU(),
-                nn.Conv2d(256, 256, kernel_size=3, stride=1),  # in: n, 256, 7, 3
-                nn.BatchNorm2d(num_features=256),
-                nn.GELU(),)
+                conv_block(in_channel=num_states[-1], out_channel=32, kernel_size=5, stride=2),  # in: n, 3, 160, 100
+                conv_block(in_channel=32, out_channel=32, kernel_size=3, stride=1),  # in: n, 32, 78, 48
+                conv_block(in_channel=32, out_channel=64, kernel_size=3, stride=2),  # in: n, 32, 76, 46
+                conv_block(in_channel=64, out_channel=64, kernel_size=3, stride=1),  # in: n, 64, 37, 22
+                conv_block(in_channel=64, out_channel=128, kernel_size=3, stride=2),  # in: n, 64, 35, 20
+                conv_block(in_channel=128, out_channel=128, kernel_size=3, stride=1),  # in: n, 128, 17, 9
+                conv_block(in_channel=128, out_channel=256, kernel_size=3, stride=2),  # in: n, 128, 15, 7
+                conv_block(in_channel=256, out_channel=256, kernel_size=3, stride=1),)  # in: n, 256, 7, 3
             _conv_out_size = self._get_conv_out_size(num_states)
             # n, 256, 5, 1 -> 256
             self.linear_img = nn.Linear(256 * 5 * 1, num_hidden_cell, bias=True)

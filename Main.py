@@ -53,7 +53,7 @@ def built_parser(method):
     parser.add_argument('--num_hidden_cell', type=int, default=256)
 
     '''other setting'''
-    parser.add_argument("--max_train", type=int, default=1000000)
+    parser.add_argument("--max_train", type=int, default=500000)
     parser.add_argument("--decay_T_max", type=int, default=parser.parse_args().max_train, help='for learning rate annealing')
     parser.add_argument('--load_param_period', type=int, default=20)
     parser.add_argument('--save_model_period', type=int, default=20000)
