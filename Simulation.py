@@ -1,14 +1,19 @@
 from __future__ import print_function
-import torch
+import cv2
 import numpy as np
+import torch
 import torch.multiprocessing as mp
 from torch.multiprocessing import Process, Queue
+from torch.utils.tensorboard import SummaryWriter
+
 import time
-from Model import PolicyNet,QNet
 import gym
 import matplotlib.pyplot as plt
+
 from utils import *
-import cv2
+from Model import PolicyNet,QNet
+
+
 
 class Simulation():
     def __init__(self, args,shared_value):
@@ -70,7 +75,7 @@ class Simulation():
             self.info = info_dict_to_array(self.info_dict)
             self.episode_step = 0
             state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
-            info_tensor = torch.FloatTensor(info.copy()).float().to(self.device)
+            info_tensor = torch.FloatTensor(self.info.copy()).float().to(self.device)
 
             if self.args.NN_type == "CNN":
                 state_tensor = state_tensor.permute(2, 0, 1)
@@ -88,6 +93,16 @@ class Simulation():
                 self.Q_history.append(q.detach().item())
 
                 self.u = self.u.squeeze(0)
+
+                # TODO
+                with SummaryWriter(log_dir='./logs') as writer:
+                    writer.add_scalar('accel', self.u[0], i)
+                    writer.add_scalar('steer', self.u[1], i)
+                    # writer.add_scalar('random', np.random.randint(0, 10), i)
+                    v = self.env.ego.get_velocity()
+                    v = np.array([v.x, v.y, v.z])
+                    writer.add_scalar('velocity', np.linalg.norm(v), i)
+
                 self.state, self.reward, self.done, self.info_dict = self.env.step(self.u)
                 self.info = info_dict_to_array(self.info_dict)
 
@@ -101,7 +116,7 @@ class Simulation():
                 # if step%10000 >=0 and step%10000 <=9999:
                 #     self.env.render(mode='human')
                 state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
-                info_tensor = torch.FloatTensor(info.copy()).float().to(self.device)
+                info_tensor = torch.FloatTensor(self.info.copy()).float().to(self.device)
 
                 if self.args.NN_type == "CNN":
                     state_tensor = state_tensor.permute(2, 0, 1)

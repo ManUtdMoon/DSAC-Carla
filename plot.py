@@ -238,15 +238,15 @@ def test_value_plot():
 
 
 if __name__ == '__main__':
-    env_name = "gym_carla_carla-v0"
+    env_name = "gym_carla:carla-v0"
     # # MountainCarContinuous-v0 BipedalWalkerHardcore-v2 Pendulum-v0
     # LunarLanderContinuous-v2  BipedalWalker-v2  CarRacing-v0
     run_numbers = 1
     method_numbers = 1
     init_run = 0
-    init_method = 0
-    #make_a_figure_of_n_runs_for_value_estimation(env_name, run_numbers, method_numbers, init_run=init_run,
-                                                 #init_method=init_method)
+    init_method = 1
+    make_a_figure_of_n_runs_for_value_estimation(env_name, run_numbers, method_numbers, init_run=init_run,
+                                                 init_method=init_method)
     make_a_figure_of_n_runs_for_average_performance(env_name, run_numbers, method_numbers, init_run=init_run,
                                                     init_method=init_method)
     plt.show()
