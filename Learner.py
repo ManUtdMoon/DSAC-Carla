@@ -77,17 +77,15 @@ class Learner():
         else:
             self.alpha = torch.tensor(self.args.alpha)
 
-    def send_to_device(self, s, info, a, r, s_next, info_next, done, device):
-        s = torch.FloatTensor(s).to(device)
-        info = torch.FloatTensor(info).to(device)
-        a = torch.FloatTensor(a).to(device)
-        r = torch.FloatTensor(r).to(device)
-        s_next = torch.FloatTensor(s_next).to(device)
-        info_next = torch.Tensor(info_next).to(device)
-        done = torch.FloatTensor(done).to(device)
-        return s, info, a, r, s_next, info_next, done
+    # def send_to_device(self,s, a, r, s_next,  done, device):
+    #     s = torch.FloatTensor(s).to(device)
+    #     a = torch.FloatTensor(a).to(device)
+    #     r = torch.FloatTensor(r).to(device)
+    #     s_next = torch.FloatTensor(s_next).to(device)
+    #     done = torch.FloatTensor(done).to(device)
+    #     return s, a, r, s_next,  done
 
-    def get_qloss(self, q, q_std, target_q_1):
+    def get_qloss(self,q, q_std, target_q_1):
         if self.args.distributional_Q:
             loss = -Normal(q, q_std).log_prob(target_q_1.detach()).mean()
         else:
@@ -95,11 +93,11 @@ class Learner():
             loss = criterion(q, target_q_1.detach())
         return loss
 
-    def get_policyloss(self, q, log_prob_a_new):
+    def get_policyloss(self,q, log_prob_a_new):
         loss = (self.alpha.detach() * log_prob_a_new - q).mean()
         return loss
 
-    def update_net(self, loss, optimizer, net, net_share, scheduler):
+    def update_net(self,loss, optimizer, net, net_share, scheduler):
         optimizer.zero_grad()
         if self.gpu:
             if self.args.alpha == 'auto':
@@ -131,25 +129,23 @@ class Learner():
             target_q = q + difference
         return target_q
 
-    def send_to_device(self, s, info, a, r, s_next, info_next, done, device):
+    def send_to_device(self,s, a, r, s_next,  done, device):
         s = s.to(device)
-        info = info.to(device)
         a = a.to(device)
         r = r.to(device)
         s_next = s_next.to(device)
-        info_next = info_next.to(device)
         done = done.to(device)
-        return s, info, a, r, s_next, info_next, done
+        return s, a, r, s_next,  done
 
     def run(self):
         local_iteration = 0
         index = np.random.randint(0, self.args.num_buffers)
-        while self.experience_out_queue[index].empty() and not self.stop_sign.value:
-            index = np.random.randint(0, self.args.num_buffers)
-            time.sleep(0.1)
-        if not self.experience_out_queue[index].empty():
-            s, info, a, r, s_next, info_next, done = self.experience_out_queue[index].get()
-            s, info, a, r, s_next, info_next, done = self.send_to_device(s, info, a, r, s_next, info_next, done, self.device)
+        # while self.experience_out_queue[index].empty() and not self.stop_sign.value:
+        #     index = np.random.randint(0, self.args.num_buffers)
+        #     time.sleep(0.1)
+        # if not self.experience_out_queue[index].empty():
+        #     s, a, r, s_next, done = self.experience_out_queue[index].get()
+        #     s, a, r, s_next, done = self.send_to_device(s, a, r, s_next, done, self.device)
 
         while not self.stop_sign.value:
             self.iteration = self.iteration_counter.value
@@ -170,33 +166,33 @@ class Learner():
                 index = np.random.randint(0, self.args.num_buffers)
                 time.sleep(0.1)
             if not self.experience_out_queue[index].empty():
-                s, info, a, r, s_next, info_next, done = self.experience_out_queue[index].get()
-                s, info, a, r, s_next, info_next, done = self.send_to_device(s, info, a, r, s_next, info_next, done, self.device)
+                s, a, r, s_next, done = self.experience_out_queue[index].get()
+                s, a, r, s_next, done = self.send_to_device(s, a, r, s_next, done, self.device)
 
-            q_1, q_std_1, _ = self.Q_net1.evaluate(s, info, a,device=self.device, min=False)
+            q_1, q_std_1, _ = self.Q_net1.evaluate(s, a,device=self.device, min=False)
             if self.args.double_Q:
-                q_2, q_std_2, _ = self.Q_net2.evaluate(s, info, a,device=self.device, min=False)
+                q_2, q_std_2, _ = self.Q_net2.evaluate(s, a,device=self.device, min=False)
 
             smoothing_trick = False
             if not self.args.stochastic_actor:
                 if self.args.policy_smooth:
                     smoothing_trick = True
 
-            a_new_1, log_prob_a_new_1, a_new_std_1 = self.actor1.evaluate(s, info, smooth_policy = False, device=self.device)
-            a_next_1, log_prob_a_next_1, _ = self.actor1_target.evaluate(s_next, info_next, smooth_policy = smoothing_trick, device=self.device)
+            a_new_1, log_prob_a_new_1, a_new_std_1 = self.actor1.evaluate(s, smooth_policy = False, device=self.device)
+            a_next_1, log_prob_a_next_1, _ = self.actor1_target.evaluate(s_next, smooth_policy = smoothing_trick, device=self.device)
             if self.args.double_actor:
-                a_new_2, log_prob_a_new_2, _ = self.actor2.evaluate(s, info, smooth_policy = False, device=self.device)
-                a_next_2, log_prob_a_next_2, _ = self.actor2_target.evaluate(s_next, info_next, smooth_policy = smoothing_trick, device=self.device)
+                a_new_2, log_prob_a_new_2, _ = self.actor2.evaluate(s,smooth_policy = False, device=self.device)
+                a_next_2, log_prob_a_next_2, _ = self.actor2_target.evaluate(s_next,smooth_policy = smoothing_trick, device=self.device)
 
             if self.args.double_Q and self.args.double_actor:
-                q_next_target_1, _, q_next_sample_1 = self.Q_net2_target.evaluate(s_next, info_next, a_next_1, device=self.device, min=False)
-                q_next_target_2, _, _ = self.Q_net1_target.evaluate(s_next, info_next, a_next_2, device=self.device, min=False)
+                q_next_target_1, _, q_next_sample_1 = self.Q_net2_target.evaluate(s_next, a_next_1, device=self.device, min=False)
+                q_next_target_2, _, _ = self.Q_net1_target.evaluate(s_next, a_next_2, device=self.device, min=False)
                 target_q_1 = self.target_q(r, done, q_1.detach(), q_std_1.detach(), q_next_target_1.detach(), log_prob_a_next_1.detach())
                 target_q_2 = self.target_q(r, done, q_2.detach(), q_std_2.detach(), q_next_target_2.detach(), log_prob_a_next_2.detach())
             else:
-                q_next_1, _, q_next_sample_1 = self.Q_net1_target.evaluate(s_next, info_next, a_next_1, device=self.device, min=False)
+                q_next_1, _, q_next_sample_1 = self.Q_net1_target.evaluate(s_next, a_next_1, device=self.device, min=False)
                 if self.args.double_Q:
-                    q_next_2, _, _ = self.Q_net2_target.evaluate(s_next, info_next, a_next_1, device=self.device, min=False)
+                    q_next_2, _, _ = self.Q_net2_target.evaluate(s_next, a_next_1, device=self.device, min=False)
                     q_next_target_1 = torch.min(q_next_1,q_next_2)
                 elif self.args.distributional_Q:
                     q_next_target_1 = q_next_sample_1
@@ -205,12 +201,12 @@ class Learner():
                 target_q_1 = self.target_q(r, done, q_1.detach(), q_std_1.detach(), q_next_target_1.detach(), log_prob_a_next_1.detach())
 
             if self.args.double_Q and self.args.double_actor:
-                q_object_1, _, _ = self.Q_net1.evaluate(s, info, a_new_1, device=self.device, min=False)
-                q_object_2, _, _ = self.Q_net2.evaluate(s, info, a_new_2, device=self.device, min=False)
+                q_object_1, _, _ = self.Q_net1.evaluate(s, a_new_1, device=self.device, min=False)
+                q_object_2, _, _ = self.Q_net2.evaluate(s, a_new_2, device=self.device, min=False)
             else:
-                q_new_1, _, _ = self.Q_net1.evaluate(s, info, a_new_1,device=self.device, min=False)
+                q_new_1, _, _ = self.Q_net1.evaluate(s, a_new_1,device=self.device, min=False)
                 if self.args.double_Q:
-                    q_new_2, _, _ = self.Q_net2.evaluate(s, info, a_new_1,device=self.device, min=False)
+                    q_new_2, _, _ = self.Q_net2.evaluate(s, a_new_1,device=self.device, min=False)
                     q_object_1 = torch.min(q_new_1,q_new_2)
                 elif self.args.distributional_Q:
                     q_object_1 = q_new_1
@@ -251,6 +247,8 @@ class Learner():
                 self.iteration_counter.value += 1
             local_iteration += 1
 
+            del s, a, r, s_next, done
+
             if self.iteration % self.args.save_model_period == 0 or (self.iteration== 0 and self.agent_id==0):
                 torch.save(self.actor1.state_dict(),'./'+self.args.env_name+'/method_' + str(self.args.method) + '/model/policy1_' + str(self.iteration) + '.pkl')
                 torch.save(self.Q_net1.state_dict(),'./'+self.args.env_name+'/method_' + str(self.args.method) + '/model/Q1_' + str(self.iteration) + '.pkl')
@@ -260,8 +258,7 @@ class Learner():
                     torch.save(self.Q_net2.state_dict(),'./'+self.args.env_name+'/method_' + str(self.args.method) + '/model/Q2_' + str(self.iteration) + '.pkl')
                 if self.args.double_actor:
                     torch.save(self.actor2.state_dict(),'./' + self.args.env_name + '/method_' + str(self.args.method) + '/model/policy2_' + str(self.iteration) + '.pkl')
-
-            if self.iteration%500  == 0 or self.iteration== 0 and self.agent_id==0:
+            if self.iteration % 1000  == 0 or self.iteration== 0 and self.agent_id==0:
                 print("agent",self.agent_id,"method",self.args.method,"iteration", self.iteration, "time",time.time() - self.init_time)
                 print("loss_1", q_loss_1, "alpha",self.alpha,"lr",self.scheduler_Q_net1.get_lr(), self.scheduler_Q_net2.get_lr(),self.scheduler_actor1.get_lr(),
                       self.scheduler_actor2.get_lr(),self.scheduler_alpha.get_lr())

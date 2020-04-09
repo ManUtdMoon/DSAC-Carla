@@ -1,17 +1,13 @@
 from __future__ import print_function
-import cv2
-import numpy as np
 import torch
+import numpy as np
 import torch.multiprocessing as mp
 from torch.multiprocessing import Process, Queue
 from torch.utils.tensorboard import SummaryWriter
-
 import time
+from Model import PolicyNet,QNet
 import gym
 import matplotlib.pyplot as plt
-
-from utils import *
-from Model import PolicyNet,QNet
 
 
 
@@ -40,8 +36,7 @@ class Simulation():
         self.args = args
         self.env = gym.make(args.env_name, params=simu_params)
         self.device = torch.device("cpu")
-        # self.load_index = self.args.max_train
-        self.load_index = 40000
+        self.load_index = self.args.max_train
 
         self.actor = PolicyNet(args).to(self.device)
         self.actor.load_state_dict(torch.load('./'+self.args.env_name+'/method_' + str(self.args.method) + '/model/policy1_' + str(self.load_index) + '.pkl',map_location='cpu'))
@@ -71,23 +66,20 @@ class Simulation():
 
         step = 0
         while True:
-            self.state, self.info_dict = self.env.reset()
-            self.info = info_dict_to_array(self.info_dict)
+            self.state, _ = self.env.reset()
             self.episode_step = 0
             state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
-            info_tensor = torch.FloatTensor(self.info.copy()).float().to(self.device)
-
             if self.args.NN_type == "CNN":
                 state_tensor = state_tensor.permute(2, 0, 1)
-            self.u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
+            self.u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), True)
 
 
-            for i in range(300):
-                q = self.Q_net1(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0]
+            for i in range(600):
+                q = self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0]
                 if self.args.double_Q:
                     q = torch.min(
-                        q,
-                        self.Q_net2(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0])
+                        self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0],
+                        self.Q_net2(state_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0])
 
 
                 self.Q_history.append(q.detach().item())
@@ -103,30 +95,26 @@ class Simulation():
                     v = np.array([v.x, v.y, v.z])
                     writer.add_scalar('velocity', np.linalg.norm(v), i)
 
-                self.state, self.reward, self.done, self.info_dict = self.env.step(self.u)
-                self.info = info_dict_to_array(self.info_dict)
+                self.state, self.reward, self.done, _ = self.env.step(self.u)
 
                 self.reward_history.append(self.reward)
                 self.done_history.append(self.done)
                 self.entropy_history.append(log_prob)
 
-                # render the image
-                cv2.imshow("camera img", self.state)
-                cv2.waitKey(1)
-                # if step%10000 >=0 and step%10000 <=9999:
-                #     self.env.render(mode='human')
-                state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
-                info_tensor = torch.FloatTensor(self.info.copy()).float().to(self.device)
 
+                if step%10000 >=0 and step%10000 <=9999:
+                    self.env.render(mode='human')
+                state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
                 if self.args.NN_type == "CNN":
                     state_tensor = state_tensor.permute(2, 0, 1)
-                self.u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
+                self.u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), True)
 
 
 
                 if self.done == True:
                     time.sleep(1)
                     print("Episode Done!")
+                    return
                     break
                 step += 1
                 self.episode_step += 1

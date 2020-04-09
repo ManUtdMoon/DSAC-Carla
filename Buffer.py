@@ -40,27 +40,23 @@ class Replay_buffer():
     #self.experience_queue.put((self.counter.value, last_state, u, reward, state, micro_step, done))
     def sample(self, batch_size, epsilon = 1e-6):
         ind = np.random.randint(0, len(self.storage), size=batch_size)
-        state, info, a, r, state_next, info_next, done = [], [], [], [], [], [], []
+        state, a, r, state_next,  done = [],[],[], [],[]
         for i in ind:
-            S, I, A, R, S_N, I_N, D = self.storage[i]
+            S, A, R, S_N,  D = self.storage[i]
             state.append(np.array(S, copy=False))
-            info.append(np.array(I, copy=False))
             a.append(np.array(A, copy=False))
             r.append(np.array(R, copy=False))
             state_next.append(np.array(S_N, copy=False))
-            info_next.append(np.array(I_N, copy=False))
             done.append(np.array(D, copy=False))
-        return np.array(state),  np.array(info), np.array(a),  np.array(r), np.array(state_next),  np.array(info_next), np.array(done)
+        return np.array(state),  np.array(a),  np.array(r), np.array(state_next),  np.array(done)
 
-    def numpy_to_tensor(self, s, info, a, r, s_next, info_next, done):
+    def numpy_to_tensor(self,s, a, r, s_next, done):
         s = torch.FloatTensor(s)
-        info = torch.Tensor(info)
         a = torch.FloatTensor(a)
         r = torch.FloatTensor(r)
         s_next = torch.FloatTensor(s_next)
-        info_next = torch.Tensor(info_next)
         done = torch.FloatTensor(done)
-        return s, info, a, r, s_next, info_next, done
+        return s, a, r, s_next, done
 
     def run(self):
         while not self.stop_sign.value:
@@ -69,13 +65,13 @@ class Replay_buffer():
             if len(self.storage) <= self.args.initial_buffer_size:
                 pass
             else:
-                s, info, a, r, s_next, info_next, done = self.sample(self.args.batch_size)
-                s, info, a, r, s_next, info_next, done = self.numpy_to_tensor(s, info, a, r, s_next, info_next, done)
+                s, a, r, s_next, done = self.sample(self.args.batch_size)
+                s, a, r, s_next, done = self.numpy_to_tensor(s, a, r, s_next, done)
                 if self.args.NN_type == "CNN":
                     s = s.permute(0,3,1,2)
                     s_next = s_next.permute(0,3,1,2)
                 if not self.experience_out_queue.full():
-                    self.experience_out_queue.put((s, info, a, r, s_next, info_next, done))
+                    self.experience_out_queue.put((s, a, r, s_next, done))
 
         time.sleep(5)
         while not self.experience_out_queue.empty():

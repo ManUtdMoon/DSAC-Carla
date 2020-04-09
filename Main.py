@@ -17,20 +17,19 @@ from Model import QNet, PolicyNet
 import my_optim
 import gym
 
-
 def built_parser(method):
     parser = argparse.ArgumentParser()
 
 
     '''Task'''
     parser.add_argument("--env_name", default="gym_carla:carla-v0")
-    #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 Hopper-v2 InvertedDoublePendulum-v2
+    #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2
     parser.add_argument('--state_dim', dest='list', type=int, default=[])
     parser.add_argument('--action_dim', type=int, default=[])
     parser.add_argument('--action_high', dest='list', type=float, default=[],action="append")
     parser.add_argument('--action_low', dest='list', type=float, default=[],action="append")
-    parser.add_argument("--NN_type", default="CNN", help='mlp or CNN')
-    parser.add_argument("--code_model", default="train", help='train or simu')
+    parser.add_argument("--NN_type", default="mlp", help='mlp or CNN')
+    parser.add_argument("--code_model", default="simu", help='train or simu')
 
     '''general hyper-parameters'''
     parser.add_argument('--critic_lr' , type=float, default=0.00008,help='critic learning rate')
@@ -39,21 +38,21 @@ def built_parser(method):
     parser.add_argument('--tau', type=float, default=0.001, help='learning rate for target')
     parser.add_argument('--gamma', type=float, default=0.99, help='discount factor for rewards (default: 0.99)')
     parser.add_argument('--delay_update', type=int, default=2, help='update interval for policy, target')
-    parser.add_argument('--reward_scale', type=float, default=1.0)
+    parser.add_argument('--reward_scale', type=float, default=1.0, help='reward = reward_scale * environmental reward ')
 
     '''hyper-parameters for soft-Q based algorithm'''
     parser.add_argument('--alpha_lr', type=float, default=0.00005,help='learning rate for temperature')
     parser.add_argument('--target_entropy',  default="auto",help="auto or some value such as -2")
 
     '''hyper-parameters for soft-Q based algorithm'''
-    parser.add_argument('--max_step', type=int, default=600, help='maximum length of an episode')
-    parser.add_argument('--buffer_size_max', type=int, default=25000, help='replay memory size')
+    parser.add_argument('--max_step', type=int, default=1000, help='maximum length of an episode')
+    parser.add_argument('--buffer_size_max', type=int, default=100000, help='replay memory size')
     parser.add_argument('--initial_buffer_size', type=int, default=2000, help='Learner waits until replay memory stores this number of transition')
-    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--num_hidden_cell', type=int, default=256)
 
     '''other setting'''
-    parser.add_argument("--max_train", type=int, default=500000)
+    parser.add_argument("--max_train", type=int, default=1000000)
     parser.add_argument("--decay_T_max", type=int, default=parser.parse_args().max_train, help='for learning rate annealing')
     parser.add_argument('--load_param_period', type=int, default=20)
     parser.add_argument('--save_model_period', type=int, default=20000)
@@ -62,8 +61,8 @@ def built_parser(method):
 
     '''parallel architecture'''
     parser.add_argument("--num_buffers", type=int, default=2)
-    parser.add_argument("--num_learners", type=int, default=2)
-    parser.add_argument("--num_actors", type=int, default=4)
+    parser.add_argument("--num_learners", type=int, default=4) #note that too many learners may cause bad update for shared network
+    parser.add_argument("--num_actors", type=int, default=6)
 
     '''method list'''
     parser.add_argument("--method", type=int, default=method)
@@ -165,18 +164,15 @@ def main(method):
         'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
     }
 
-
     args = built_parser(method=method)
     env = gym.make(args.env_name, params=params)
     state_dim = env.state_space.shape
     action_dim = env.action_space.shape[0]
 
-    #max_action = float(env.action_space.high[0])
     args.state_dim = state_dim
     args.action_dim = action_dim
     action_high = env.action_space.high
     action_low = env.action_space.low
-
     args.action_high = action_high.tolist()
     args.action_low = action_low.tolist()
     args.seed = np.random.randint(0,30)
@@ -198,7 +194,7 @@ def main(method):
     Q_net2_target.share_memory()
     actor1 = PolicyNet(args)
 
-    print("Net inited")
+    print("Network inited")
 
     if args.code_model == "eval":
         actor1.load_state_dict(torch.load('./' + args.env_name + '/method_' + str(args.method) + '/model/policy_' + str(args.max_train) + '.pkl'))
@@ -214,7 +210,7 @@ def main(method):
     actor2_target.train()
     actor2_target.share_memory()
 
-    print("Net set")
+    print("Network set")
 
     Q_net1_target.load_state_dict(Q_net1.state_dict())
     Q_net2_target.load_state_dict(Q_net2.state_dict())
@@ -253,9 +249,7 @@ def main(method):
     shared_value = [step_counter, stop_sign,iteration_counter]
     lock = mp.Lock()
     procs=[]
-    if args.code_model!="train":
-        args.alpha = 0.01
-    if args.code_model!="simu":
+    if args.code_model=="train":
         for i in range(args.num_actors):
             procs.append(Process(target=actor_agent, args=(args, shared_queue, shared_value,[actor1,Q_net1], lock, i)))
         for i in range(args.num_buffers):
@@ -263,7 +257,7 @@ def main(method):
         procs.append(Process(target=test_agent, args=(args, shared_value, [actor1, log_alpha])))
         procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
         for i in range(args.num_learners):
-            if i == 0:
+            if i % 2 == 0:
                 device = torch.device("cuda:0")
             else:
                 device = torch.device("cuda:1")

@@ -7,13 +7,12 @@ import pandas as pd
 import copy
 from functools import reduce
 import matplotlib.pyplot as plt
-from utils import *
 
 
 def plot_online(env_name, last_method_idx, Method_Name, max_state):
     # make a total dataframe
     df_list = []
-    init_method = 0
+    init_method = 1
     for method_idx in range(init_method, last_method_idx + 1, 1):
         df_list_for_this_method = []
         iteration = np.load('./' + env_name + '/method_' + str(method_idx) + '/result/iteration_evaluation.npy')
@@ -64,7 +63,7 @@ class Evaluator(object):
             'obs_size': (160, 100),  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
-            'port': 2015,  # connection port
+            'port': 2021,  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'test',
             'max_time_episode': 500,  # maximum timesteps per episode
@@ -100,38 +99,29 @@ class Evaluator(object):
 
     def run_an_episode(self):
         state_list = []
-        info_list = []
         action_list = []
         log_prob_list = []
         reward_list = []
         evaluated_Q_list = []
         done = 0
-        state, info_dict = self.env.reset()
-        info = info_dict_to_array(info_dict)
-
+        state, _ = self.env.reset()
         while not done and len(reward_list) < self.args.max_step:
             state_tensor = torch.FloatTensor(state.copy()).float().to(self.device)
-            info_tensor = torch.FloatTensor(info.copy()).float().to(self.device)
             if self.args.NN_type == "CNN":
-                state_tensor = state_tensor.permute(2, 0, 1)  # 3, 256, 256
-
-            u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), self.args.stochastic_actor)
+                state_tensor = state_tensor.permute(2, 0, 1)
+            u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), self.args.stochastic_actor)
             state_list.append(state.copy())
-            info_list.append(info.copy())
             action_list.append(u.copy())
             log_prob_list.append(log_prob)
-
             if self.args.double_Q and not self.args.double_actor:
                 q = torch.min(
-                    self.Q_net1(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0],
-                    self.Q_net2(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0])
+                    self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0],
+                    self.Q_net2(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0])
             else:
-                q = self.Q_net1(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0]
+                q = self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0]
             evaluated_Q_list.append(q.detach().item())
             u = u.squeeze(0)
-            state, reward, done, info_dict = self.env.step(u)
-            info = info_dict_to_array(info_dict)
-
+            state, reward, done, load_action = self.env.step(u)
             # self.env.render(mode='human')
             reward_list.append(reward * self.args.reward_scale)
         entropy_list = list(-self.alpha * np.array(log_prob_list))
@@ -140,7 +130,6 @@ class Evaluator(object):
         episode_len = len(reward_list)
 
         return dict(state_list=np.array(state_list),
-                    info_list=np.array(info_list),
                     action_list=np.array(action_list),
                     log_prob_list=np.array(log_prob_list),
                     reward_list=np.array(reward_list),
