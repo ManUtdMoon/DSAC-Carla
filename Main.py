@@ -61,8 +61,8 @@ def built_parser(method):
 
     '''parallel architecture'''
     parser.add_argument("--num_buffers", type=int, default=2)
-    parser.add_argument("--num_learners", type=int, default=4) #note that too many learners may cause bad update for shared network
-    parser.add_argument("--num_actors", type=int, default=6)
+    parser.add_argument("--num_learners", type=int, default=2) #note that too many learners may cause bad update for shared network
+    parser.add_argument("--num_actors", type=int, default=4)
 
     '''method list'''
     parser.add_argument("--method", type=int, default=method)

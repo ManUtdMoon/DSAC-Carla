@@ -63,7 +63,7 @@ class Evaluator(object):
             'obs_size': (160, 100),  # screen size of cv2 window
             'dt': 0.1,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
-            'port': 2021,  # connection port
+            'port': int(2003 + 3*args.num_actors),  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'test',
             'max_time_episode': 500,  # maximum timesteps per episode
