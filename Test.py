@@ -54,7 +54,7 @@ class Test():
 
         test_params = {
             'obs_size': (160, 100),  # screen size of cv2 window
-            'dt': 0.1,  # time interval between two frames
+            'dt': 0.025,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': int(2000 + 3*args.num_actors),  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]

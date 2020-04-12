@@ -22,7 +22,7 @@ class Simulation():
             'number_of_vehicles': 0,
             'number_of_walkers': 0,
             'obs_size': (160, 100),  # screen size of cv2 window
-            'dt': 0.1,  # time interval between two frames
+            'dt': 0.025,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': 2000,  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]

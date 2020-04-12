@@ -45,8 +45,8 @@ def built_parser(method):
     parser.add_argument('--target_entropy',  default="auto",help="auto or some value such as -2")
 
     '''hyper-parameters for soft-Q based algorithm'''
-    parser.add_argument('--max_step', type=int, default=1000, help='maximum length of an episode')
-    parser.add_argument('--buffer_size_max', type=int, default=100000, help='replay memory size')
+    parser.add_argument('--max_step', type=int, default=500, help='maximum length of an episode')
+    parser.add_argument('--buffer_size_max', type=int, default=80000, help='replay memory size')
     parser.add_argument('--initial_buffer_size', type=int, default=2000, help='Learner waits until replay memory stores this number of transition')
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--num_hidden_cell', type=int, default=256)
@@ -154,7 +154,7 @@ def main(method):
 
     params = {
         'obs_size': (160, 100),  # screen size of cv2 window
-        'dt': 0.1,  # time interval between two frames
+        'dt': 0.025,  # time interval between two frames
         'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
         'port': 2000,  # connection port
         'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
