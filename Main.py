@@ -29,7 +29,7 @@ def built_parser(method):
     parser.add_argument('--action_high', dest='list', type=float, default=[],action="append")
     parser.add_argument('--action_low', dest='list', type=float, default=[],action="append")
     parser.add_argument("--NN_type", default="mlp", help='mlp or CNN')
-    parser.add_argument("--code_model", default="simu", help='train or simu')
+    parser.add_argument("--code_model", default="train", help='train or simu')
 
     '''general hyper-parameters'''
     parser.add_argument('--critic_lr' , type=float, default=0.00008,help='critic learning rate')
@@ -52,7 +52,7 @@ def built_parser(method):
     parser.add_argument('--num_hidden_cell', type=int, default=256)
 
     '''other setting'''
-    parser.add_argument("--max_train", type=int, default=1000000)
+    parser.add_argument("--max_train", type=int, default=2000000)
     parser.add_argument("--decay_T_max", type=int, default=parser.parse_args().max_train, help='for learning rate annealing')
     parser.add_argument('--load_param_period', type=int, default=20)
     parser.add_argument('--save_model_period', type=int, default=20000)
@@ -278,8 +278,3 @@ if __name__ == '__main__':
 
     for i in [1]:
         main(i)
-
-
-
-
-
