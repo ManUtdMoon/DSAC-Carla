@@ -77,15 +77,15 @@ class Learner():
         else:
             self.alpha = torch.tensor(self.args.alpha)
 
-    def send_to_device(self, s, info, a, r, s_next, info_next, done, device):
-        s = torch.FloatTensor(s).to(device)
-        info = torch.FloatTensor(info).to(device)
-        a = torch.FloatTensor(a).to(device)
-        r = torch.FloatTensor(r).to(device)
-        s_next = torch.FloatTensor(s_next).to(device)
-        info_next = torch.Tensor(info_next).to(device)
-        done = torch.FloatTensor(done).to(device)
-        return s, info, a, r, s_next, info_next, done
+    # def send_to_device(self, s, info, a, r, s_next, info_next, done, device):
+    #     s = torch.FloatTensor(s).to(device)
+    #     info = torch.FloatTensor(info).to(device)
+    #     a = torch.FloatTensor(a).to(device)
+    #     r = torch.FloatTensor(r).to(device)
+    #     s_next = torch.FloatTensor(s_next).to(device)
+    #     info_next = torch.Tensor(info_next).to(device)
+    #     done = torch.FloatTensor(done).to(device)
+    #     return s, info, a, r, s_next, info_next, done
 
     def get_qloss(self, q, q_std, target_q_1):
         if self.args.distributional_Q:
@@ -144,12 +144,12 @@ class Learner():
     def run(self):
         local_iteration = 0
         index = np.random.randint(0, self.args.num_buffers)
-        while self.experience_out_queue[index].empty() and not self.stop_sign.value:
-            index = np.random.randint(0, self.args.num_buffers)
-            time.sleep(0.1)
-        if not self.experience_out_queue[index].empty():
-            s, info, a, r, s_next, info_next, done = self.experience_out_queue[index].get()
-            s, info, a, r, s_next, info_next, done = self.send_to_device(s, info, a, r, s_next, info_next, done, self.device)
+        # while self.experience_out_queue[index].empty() and not self.stop_sign.value:
+        #     index = np.random.randint(0, self.args.num_buffers)
+        #     time.sleep(0.1)
+        # if not self.experience_out_queue[index].empty():
+        #     s, info, a, r, s_next, info_next, done = self.experience_out_queue[index].get()
+        #     s, info, a, r, s_next, info_next, done = self.send_to_device(s, info, a, r, s_next, info_next, done, self.device)
 
         while not self.stop_sign.value:
             self.iteration = self.iteration_counter.value
@@ -261,7 +261,7 @@ class Learner():
                 if self.args.double_actor:
                     torch.save(self.actor2.state_dict(),'./' + self.args.env_name + '/method_' + str(self.args.method) + '/model/policy2_' + str(self.iteration) + '.pkl')
 
-            if self.iteration%500  == 0 or self.iteration== 0 and self.agent_id==0:
+            if self.iteration % 500  == 0 or self.iteration== 0 and self.agent_id==0:
                 print("agent",self.agent_id,"method",self.args.method,"iteration", self.iteration, "time",time.time() - self.init_time)
                 print("loss_1", q_loss_1, "alpha",self.alpha,"lr",self.scheduler_Q_net1.get_lr(), self.scheduler_Q_net2.get_lr(),self.scheduler_actor1.get_lr(),
                       self.scheduler_actor2.get_lr(),self.scheduler_alpha.get_lr())

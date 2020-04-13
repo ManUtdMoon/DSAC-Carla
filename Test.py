@@ -14,7 +14,7 @@ from utils import *
 def plot_online(env_name, last_method_idx, Method_Name):
     # make a total dataframe
     df_list = []
-    init_method = 0
+    init_method = 1
     for method_idx in range(init_method,last_method_idx + 1,1):
         iteration = np.load('./' + env_name + '/method_' + str(method_idx) + '/result/iteration.npy')
         time = np.load('./' + env_name + '/method_' + str(method_idx) + '/result/time.npy')
@@ -54,9 +54,9 @@ class Test():
 
         test_params = {
             'obs_size': (160, 100),  # screen size of cv2 window
-            'dt': 0.1,  # time interval between two frames
+            'dt': 0.025,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
-            'port': 2012,  # connection port
+            'port': int(2000 + 3*args.num_actors),  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'test',
             'max_time_episode': 500,  # maximum timesteps per episode
@@ -75,7 +75,7 @@ class Test():
         self.log_alpha = share_net[1]
 
         self.test_step = 0
-        self.episode_num = 5
+        self.episode_num = 10
         self.test_interval = 20000
         self.start_time = time.time()
         self.list_of_n_episode_rewards_history = []
@@ -93,19 +93,16 @@ class Test():
         accel_list = []
         steer_list = []
         done = 0
-        state, info_dict = self.env.reset()
-        info = info_dict_to_array(info_dict)
+        state, info = self.env.reset()
 
         while not done and len(reward_list) < self.args.max_step:
             state_tensor = torch.FloatTensor(state.copy()).float().to(self.device)
             info_tensor = torch.FloatTensor(info.copy()).float().to(self.device)
             if self.args.NN_type == "CNN":
-                state_tensor = state_tensor.permute(2, 0, 1)  # 3, 256, 256
+                state_tensor = state_tensor.permute(2, 0, 1)  # 3, 64, 160
             u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
             u = u.squeeze(0)
             state, reward, done, info_dict = self.env.step(u)
-            info = info_dict_to_array(info_dict)
-
             #self.env.render(mode='human')
             reward_list.append(reward)
             accel_list.append(u[0])
@@ -165,8 +162,8 @@ class Test():
                         np.array(self.iteration_history))
                 np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/time',
                         np.array(self.time_history))
-                np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/list_of_n_episode_rewards',
-                        np.array(self.list_of_n_episode_rewards_history))
+                # np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/list_of_n_episode_rewards',
+                #         np.array(self.list_of_n_episode_rewards_history))
                 np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/average_return_with_diff_base',
                         np.array(self.average_return_with_diff_base_history))
                 np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/average_reward',
@@ -178,7 +175,7 @@ class Test():
                 np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/steer',
                         np.array(self.steer_history))
 
-                #plot_online(self.args.env_name, self.args.method, self.args.method_name)
+                # plot_online(self.args.env_name, self.args.method, self.args.method_name)
 
                 if self.iteration >= self.args.max_train:
                     self.stop_sign.value = 1

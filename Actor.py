@@ -19,7 +19,7 @@ class Actor():
 
         self.actor_params = {
             'obs_size': (160, 100),  # screen size of cv2 window
-            'dt': 0.1,  # time interval between two frames
+            'dt': 0.025,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': int(2000+3*self.agent_id),  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
@@ -65,15 +65,14 @@ class Actor():
         time_init = time.time()
         step = 0
         while not self.stop_sign.value:
-            self.state, self.ego_info = self.env.reset()  # shape(256,256,3)
+            self.state, self.info = self.env.reset()  # shape(256,256,3)
             self.episode_step = 0
-            self.info = info_dict_to_array(self.ego_info)  # shape(10,)
 
-            state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)  # 256,256,3
+            state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)  # 64,160,3
             info_tensor = torch.FloatTensor(self.info.copy()).float().to(self.device)
 
             if self.args.NN_type == "CNN":
-                state_tensor = state_tensor.permute(2, 0, 1)  # 3, 256, 256
+                state_tensor = state_tensor.permute(2, 0, 1)  # 3, 64, 160
             self.u, _ = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), False)
             #q_1 = self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0]
             self.u = self.u.squeeze(0)
@@ -82,8 +81,7 @@ class Actor():
             self.last_u = self.u.copy()
             #last_q_1 = q_1
             for i in range(self.args.max_step-1):
-                self.state, self.reward, self.done, self.ego_info = self.env.step(self.u)
-                self.info = info_dict_to_array(self.ego_info)
+                self.state, self.reward, self.done, self.info = self.env.step(self.u)
 
                 state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
                 info_tensor = torch.FloatTensor(self.info.copy()).float().to(self.device)

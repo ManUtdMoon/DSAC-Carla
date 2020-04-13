@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 from torch.multiprocessing import Process, Queue
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 
 import time
 import gym
@@ -26,7 +26,7 @@ class Simulation():
             'number_of_vehicles': 0,
             'number_of_walkers': 0,
             'obs_size': (160, 100),  # screen size of cv2 window
-            'dt': 0.1,  # time interval between two frames
+            'dt': 0.025,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': 2000,  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
@@ -40,8 +40,8 @@ class Simulation():
         self.args = args
         self.env = gym.make(args.env_name, params=simu_params)
         self.device = torch.device("cpu")
-        # self.load_index = self.args.max_train
-        self.load_index = 40000
+        self.load_index = self.args.max_train
+        # self.load_index = 40000
 
         self.actor = PolicyNet(args).to(self.device)
         self.actor.load_state_dict(torch.load('./'+self.args.env_name+'/method_' + str(self.args.method) + '/model/policy1_' + str(self.load_index) + '.pkl',map_location='cpu'))
@@ -72,7 +72,6 @@ class Simulation():
         step = 0
         while True:
             self.state, self.info_dict = self.env.reset()
-            self.info = info_dict_to_array(self.info_dict)
             self.episode_step = 0
             state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
             info_tensor = torch.FloatTensor(self.info.copy()).float().to(self.device)
@@ -82,7 +81,7 @@ class Simulation():
             self.u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
 
 
-            for i in range(300):
+            for i in range(500):
                 q = self.Q_net1(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0]
                 if self.args.double_Q:
                     q = torch.min(
@@ -96,15 +95,21 @@ class Simulation():
 
                 # TODO
                 with SummaryWriter(log_dir='./logs') as writer:
-                    writer.add_scalar('accel', self.u[0], i)
-                    writer.add_scalar('steer', self.u[1], i)
                     # writer.add_scalar('random', np.random.randint(0, 10), i)
                     v = self.env.ego.get_velocity()
                     v = np.array([v.x, v.y, v.z])
-                    writer.add_scalar('velocity', np.linalg.norm(v), i)
+                    writer.add_scalar('v_x', self.info[0], i)
+                    writer.add_scalar('v_y', self.info[1], i)
+                    writer.add_scalar('accelaration_x', self.info[2], i)
+                    writer.add_scalar('accelaration_y', self.info[3], i)
+                    writer.add_scalar('distance2terminal', self.info[4]*20, i)
+                    # writer.add_scalar('delta_yaw', self.state[5]*2, i)
+                    writer.add_scalar('angular_speed_z', self.info[5]*5, i)
+                    # writer.add_scalar('lateral_dist', self.state[7]/10, i)
+                    writer.add_scalar('action_throttle', self.state[6]/10, i)
+                    writer.add_scalar('action_steer', self.state[7]/10, i)
 
-                self.state, self.reward, self.done, self.info_dict = self.env.step(self.u)
-                self.info = info_dict_to_array(self.info_dict)
+                self.state, self.reward, self.done, self.info = self.env.step(self.u)
 
                 self.reward_history.append(self.reward)
                 self.done_history.append(self.done)
@@ -127,6 +132,7 @@ class Simulation():
                 if self.done == True:
                     time.sleep(1)
                     print("Episode Done!")
+                    return
                     break
                 step += 1
                 self.episode_step += 1

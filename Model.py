@@ -16,11 +16,12 @@ def conv_block(in_channel, out_channel, kernel_size, stride):
         nn.GELU(),)
 
 class QNet(nn.Module):
-    def __init__(self, args,log_std_min=-6, log_std_max=6):
+    def __init__(self, args, log_std_min=-6, log_std_max=6):
         super(QNet, self).__init__()
         num_states = args.state_dim
         num_action = args.action_dim
         num_hidden_cell = args.num_hidden_cell
+        num_info = args.info_dim
         self.NN_type = args.NN_type
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
@@ -34,7 +35,7 @@ class QNet(nn.Module):
             _conv_out_size = self._get_conv_out_size(num_states)
             # n, 256, 5, 1 -> 256
             self.linear_img = nn.Linear(256 * 7 * 1, num_hidden_cell, bias=True)
-            self.linear_info = nn.Linear(12 + num_action, 128, bias=True)
+            self.linear_info = nn.Linear(num_info + num_action, 128, bias=True)
             self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
 
@@ -100,10 +101,11 @@ class QNet(nn.Module):
 
 
 class PolicyNet(nn.Module):
-    def __init__(self, args,log_std_min=-20, log_std_max=2):
+    def __init__(self, args, log_std_min=-20, log_std_max=2):
         super(PolicyNet, self).__init__()
         num_states = args.state_dim
         num_hidden_cell = args.num_hidden_cell
+        num_info = args.info_dim
         action_high = args.action_high
         action_low = args.action_low
         self.NN_type = args.NN_type
@@ -122,7 +124,7 @@ class PolicyNet(nn.Module):
 
             # n, 32, 6, 6 -> 256
             self.linear_img = nn.Linear(256 * 7 * 1, num_hidden_cell, bias=True)
-            self.linear_info = nn.Linear(12, 128, bias=True)
+            self.linear_info = nn.Linear(num_info, 128, bias=True)
             self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
 
@@ -226,6 +228,7 @@ class ValueNet(nn.Module):
     def __init__(self, num_states, num_hidden_cell, NN_type):
         super(ValueNet, self).__init__()
         self.NN_type = NN_type
+        num_info = 8
 
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
@@ -239,7 +242,7 @@ class ValueNet(nn.Module):
             _conv_out_size = self._get_conv_out_size(num_states)
 
             self.linear_img = nn.Linear(256 * 7 * 1, num_hidden_cell, bias=True)
-            self.linear_info = nn.Linear(12, 128, bias=True)
+            self.linear_info = nn.Linear(num_info, 128, bias=True)
             self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
             self.linear3 = nn.Linear(num_hidden_cell, 1, bias=True)
@@ -264,7 +267,7 @@ class ValueNet(nn.Module):
             x = F.gelu(self.linear2(x))
             x = self.linear3(x)
         return x
-    
+
     def init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):
@@ -284,13 +287,14 @@ class ValueNet(nn.Module):
 
 class Args(object):
     def __init__(self):
-        self.state_dim = (100, 160, 3)
+        self.state_dim = (64, 160, 3)
         self.action_dim = 2
         self.NN_type = 'CNN'
         self.num_hidden_cell = 256
         self.action_high = [1.0, 1.0]
         self.action_low = [-1.0, -1.0]
         self.stochastic_actor = True
+        self.info_dim = 8
 
 
 def test():
@@ -310,14 +314,14 @@ def test():
     # print(bb.sum(-1, keepdim=True))
 
     args = Args()
-    img = torch.rand((10, 3, 160, 64))
-    info = torch.rand((10, 12))
-    action = torch.ones((10, 2))
-    q_net = QNet(args)
-    print(q_net.forward(img, info, action))
-    print(q_net.evaluate(img, info, action))
-    total_num = sum(p.numel() for p in q_net.parameters())
-    print(total_num)
+    img = torch.rand((1, 3, 160, 64))
+    info = torch.rand((1, 8))
+    action = torch.ones((1, 2))
+    # q_net = QNet(args)
+    # print(q_net.forward(img, info, action))
+    # print(q_net.evaluate(img, info, action))
+    # total_num = sum(p.numel() for p in q_net.parameters())
+    # print(total_num)
 
     # p_net = PolicyNet(args)
     # total_num = sum(p.numel() for p in p_net.parameters())
@@ -327,10 +331,10 @@ def test():
     # print(p_net.get_action(img, info, True))
     # p_net.evaluate(img, info, False)
 
-    # v_net = ValueNet((160, 64, 3), 256, 'CNN')
-    # v_net.forward(img, info)
-    # total_num = sum(p.numel() for p in v_net.parameters())
-    # print(total_num)
+    v_net = ValueNet((160, 64, 3), 256, 'CNN')
+    v_net.forward(img, info)
+    total_num = sum(p.numel() for p in v_net.parameters())
+    print(total_num)
 
 
 if __name__ == "__main__":
