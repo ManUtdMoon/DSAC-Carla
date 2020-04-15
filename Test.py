@@ -102,7 +102,7 @@ class Test():
                 state_tensor = state_tensor.permute(2, 0, 1)  # 3, 64, 160
             u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
             u = u.squeeze(0)
-            state, reward, done, info_dict = self.env.step(u)
+            state, reward, done, info = self.env.step(u)
             #self.env.render(mode='human')
             reward_list.append(reward)
             accel_list.append(u[0])
