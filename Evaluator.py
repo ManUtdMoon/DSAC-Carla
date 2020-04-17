@@ -7,24 +7,42 @@ import pandas as pd
 import copy
 from functools import reduce
 import matplotlib.pyplot as plt
+import time
 
 
 def plot_online(env_name, last_method_idx, Method_Name, max_state):
     # make a total dataframe
-    df_list = []
+    df_list_evaluation = []
+    df_list_performance = []
     init_method = 1
     for method_idx in range(init_method, last_method_idx + 1, 1):
-        df_list_for_this_method = []
-        iteration = np.load('./' + env_name + '/method_' + str(method_idx) + '/result/iteration_evaluation.npy')
         evaluated_Q_mean = np.load('./' + env_name + '/method_' + str(method_idx)
                                       + '/result/evaluated_Q_mean.npy', allow_pickle=True)
+        evaluated_Q_std = np.load('./' + env_name + '/method_' + str(method_idx)
+                                   + '/result/evaluated_Q_std.npy', allow_pickle=True)
         true_gamma_return_mean = np.load('./' + env_name + '/method_' + str(method_idx)
                                             + '/result/true_gamma_return_mean.npy', allow_pickle=True)
+        iteration = np.load('./' + env_name + '/method_' + str(method_idx) + '/result/iteration.npy')
+        time = np.load('./' + env_name + '/method_' + str(method_idx) + '/result/time.npy')
+        average_return_with_diff_base = np.load('./' + env_name + '/method_'
+                                                + str(method_idx) + '/result/average_return_with_diff_base.npy')
+        average_return_max_best = list(map(lambda x: x[0], average_return_with_diff_base))
+        average_return_max_better = list(map(lambda x: x[1], average_return_with_diff_base))
+        average_return_max_all = list(map(lambda x: x[2], average_return_with_diff_base))
+        alpha = np.load('./' + env_name + '/method_' + str(method_idx) + '/result/alpha.npy')
 
         method_name = Method_Name[method_idx]
+
+        df_for_this_method_performance = pd.DataFrame(dict(method_name=method_name,
+                                               iteration=iteration,
+                                               time=time,
+                                               average_return=average_return_max_all,
+                                               alpha=alpha))
+
         df_for_this_method_1 = pd.DataFrame(dict(method_name=method_name,
                                                  iteration=np.array(iteration),
                                                  Q=np.array(evaluated_Q_mean),
+                                                 Q_std=np.array(evaluated_Q_std),
                                                  is_true='estimation'))
         df_for_this_method_2 = pd.DataFrame(dict(method_name=method_name,
                                                  iteration=np.array(iteration),
@@ -32,13 +50,27 @@ def plot_online(env_name, last_method_idx, Method_Name, max_state):
                                                  is_true='ground truth'))
 
         df_for_this_method = df_for_this_method_1.append(df_for_this_method_2, ignore_index=True)
-        df_list.append(df_for_this_method)
-    total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if last_method_idx > init_method else df_list[0]
-    f1 = plt.figure(1)
-    sns.lineplot(x="iteration", y="Q", hue="method_name", style="is_true", data=total_dataframe)
+        df_list_evaluation.append(df_for_this_method)
+        df_list_performance.append(df_for_this_method_performance)
+    total_dataframe_evaluation = df_list_evaluation[0].append(df_list_evaluation[1:], ignore_index=True) if last_method_idx > init_method else df_list_evaluation[0]
+    total_dataframe_performance = df_list_performance[0].append(df_list_performance[1:], ignore_index=True) if last_method_idx > init_method else df_list_performance[0]
+
+    f1=plt.figure(1,figsize=(10, 8))
+
+    plt.subplot(221)
+    sns.lineplot(x="iteration", y="average_return", hue="method_name", data=total_dataframe_performance)
     plt.title(env_name)
 
-    plt.pause(5)
+    plt.subplot(222)
+    sns.lineplot(x="iteration", y="alpha", hue="method_name", data=total_dataframe_performance)
+
+    plt.subplot(223)
+    sns.lineplot(x="iteration", y="Q", hue="method_name", style="is_true", data=total_dataframe_evaluation)
+
+    plt.subplot(224)
+    sns.lineplot(x="iteration", y="Q_std", hue="method_name", data=total_dataframe_evaluation)
+
+    plt.pause(10)
     f1.clf()
 
 
@@ -63,8 +95,8 @@ class Evaluator(object):
             'obs_size': (160, 100),  # screen size of cv2 window
             'dt': 0.025,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
-            'port': int(2003 + 3*args.num_actors),  # connection port
-            'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
+            'port': int(2000 + 3*args.num_actors),  # connection port
+            'task_mode': 'Curve',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'test',
             'max_time_episode': 500,  # maximum timesteps per episode
             'desired_speed': 8,  # desired speed (m/s)
@@ -87,15 +119,25 @@ class Evaluator(object):
         self.log_alpha_share = share_net[-1]
         self.alpha = np.exp(self.log_alpha_share.detach().item()) if args.alpha == 'auto' else 0
 
-        self.evaluation_interval = 50000
+        self.evaluation_interval = 20000
         self.max_state_num_evaluated_in_an_episode = 500
         self.episode_num_to_run = 10
+        self.start_time = time.time()
+        self.list_of_n_episode_rewards_history = []
+        self.time_history = []
+        self.alpha_history = []
+        self.average_return_with_diff_base_history = []
+        self.average_reward_history = []
         self.iteration_history = []
         self.evaluated_Q_mean_history=[]
+        self.evaluated_Q_std_history = []
         self.true_gamma_return_mean_history=[]
         # self.n_episodes_info_history = []
-        self.evaluated_Q_history = []
-        self.true_gamma_return_history = []
+
+
+    def average_max_n(self, list_for_average, n):
+        sorted_list = sorted(list_for_average, reverse=True)
+        return sum(sorted_list[:n]) / n
 
     def run_an_episode(self):
         state_list = []
@@ -103,25 +145,28 @@ class Evaluator(object):
         log_prob_list = []
         reward_list = []
         evaluated_Q_list = []
+        Q_std_list = []
         done = 0
         state, _ = self.env.reset()
         while not done and len(reward_list) < self.args.max_step:
             state_tensor = torch.FloatTensor(state.copy()).float().to(self.device)
-            if self.args.NN_type == "CNN":
-                state_tensor = state_tensor.permute(2, 0, 1)
             u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), self.args.stochastic_actor)
             state_list.append(state.copy())
             action_list.append(u.copy())
             log_prob_list.append(log_prob)
             if self.args.double_Q and not self.args.double_actor:
                 q = torch.min(
-                    self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0],
-                    self.Q_net2(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0])
+                    self.Q_net1.evaluate(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0],
+                    self.Q_net2.evaluate(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0])
             else:
-                q = self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0]
+                q, q_std,_ = self.Q_net1.evaluate(state_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))
             evaluated_Q_list.append(q.detach().item())
+            if self.args.distributional_Q:
+                Q_std_list.append(q_std.detach().item())
+            else:
+                Q_std_list.append(0)
             u = u.squeeze(0)
-            state, reward, done, load_action = self.env.step(u)
+            state, reward, done, _ = self.env.step(u)
             # self.env.render(mode='human')
             reward_list.append(reward * self.args.reward_scale)
         entropy_list = list(-self.alpha * np.array(log_prob_list))
@@ -134,56 +179,49 @@ class Evaluator(object):
                     log_prob_list=np.array(log_prob_list),
                     reward_list=np.array(reward_list),
                     evaluated_Q_list=np.array(evaluated_Q_list),
+                    Q_std_list = np.array(Q_std_list),
                     true_gamma_return_list=true_gamma_return_list,
                     episode_return=episode_return,
                     episode_len=episode_len)
 
     def run_n_episodes(self, n, max_state):
-        n_episode_state_list = []
-        n_episode_action_list = []
-        n_episode_log_prob_list = []
+        # n_episode_state_list = []
+        # n_episode_action_list = []
+        # n_episode_log_prob_list = []
         n_episode_reward_list = []
         n_episode_evaluated_Q_list = []
+        n_episode_Q_std_list = []
         n_episode_true_gamma_return_list = []
         n_episode_return_list = []
         n_episode_len_list = []
         for _ in range(n):
             episode_info = self.run_an_episode()
-            n_episode_state_list.append(episode_info['state_list'])
-            n_episode_action_list.append(episode_info['action_list'])
-            n_episode_log_prob_list.append(episode_info['log_prob_list'])
+            #n_episode_state_list.append(episode_info['state_list'])
+            #n_episode_action_list.append(episode_info['action_list'])
+            #n_episode_log_prob_list.append(episode_info['log_prob_list'])
             n_episode_reward_list.append(episode_info['reward_list'])
             n_episode_evaluated_Q_list.append(episode_info['evaluated_Q_list'])
+            n_episode_Q_std_list.append(episode_info['Q_std_list'])
             n_episode_true_gamma_return_list.append(episode_info['true_gamma_return_list'])
             n_episode_return_list.append(episode_info['episode_return'])
             n_episode_len_list.append(episode_info['episode_len'])
-
+        average_return_with_diff_base = np.array([self.average_max_n(n_episode_return_list, x) for x in [1, self.episode_num_to_run-2, self.episode_num_to_run]])
+        average_reward = sum(n_episode_return_list) / sum(n_episode_len_list)
         #n_episode_evaluated_Q_list_history = list(map(lambda x: x['n_episode_evaluated_Q_list'], n_episodes_info_history))
         #n_episode_true_gamma_return_list_history = list(map(lambda x: x['n_episode_true_gamma_return_list'], n_episodes_info_history))
 
         def concat_interest_epi_part_of_one_ite_and_mean(list_of_n_epi):
             tmp = list(copy.deepcopy(list_of_n_epi))
             tmp[0] = tmp[0] if len(tmp[0]) <= max_state else tmp[0][:max_state]
-
             def reduce_fuc(a, b):
                 return np.concatenate([a, b]) if len(b) < max_state else np.concatenate([a, b[:max_state]])
-
             interest_epi_part_of_one_ite = reduce(reduce_fuc, tmp)
             return sum(interest_epi_part_of_one_ite) / len(interest_epi_part_of_one_ite)
 
         evaluated_Q_mean = concat_interest_epi_part_of_one_ite_and_mean(np.array(n_episode_evaluated_Q_list))
-
-        true_gamma_return_mean = concat_interest_epi_part_of_one_ite_and_mean(
-            np.array(n_episode_true_gamma_return_list))
-        return evaluated_Q_mean, true_gamma_return_mean
-        # return dict(n_episode_state_list=np.array(n_episode_state_list),
-        #             n_episode_action_list=np.array(n_episode_action_list),
-        #             n_episode_log_prob_list=np.array(n_episode_log_prob_list),
-        #             n_episode_reward_list=np.array(n_episode_reward_list),
-        #             n_episode_evaluated_Q_list=np.array(n_episode_evaluated_Q_list),
-        #             n_episode_true_gamma_return_list=np.array(n_episode_true_gamma_return_list),
-        #             n_episode_return_list=np.array(n_episode_return_list),
-        #             n_episode_len_list=np.array(n_episode_len_list))
+        evaluated_Q_std = concat_interest_epi_part_of_one_ite_and_mean(np.array(n_episode_Q_std_list))
+        true_gamma_return_mean = concat_interest_epi_part_of_one_ite_and_mean(np.array(n_episode_true_gamma_return_list))
+        return evaluated_Q_mean, true_gamma_return_mean,evaluated_Q_std , np.array(n_episode_reward_list), average_return_with_diff_base, average_reward
 
     def run(self):
         while not self.stop_sign.value:
@@ -193,21 +231,48 @@ class Evaluator(object):
                 self.actor.load_state_dict(self.actor_share.state_dict())
                 self.Q_net1.load_state_dict(self.Q_net1_share.state_dict())
                 self.Q_net2.load_state_dict(self.Q_net2_share.state_dict())
-                evaluated_Q_mean, true_gamma_return_mean = self.run_n_episodes(self.episode_num_to_run,self.max_state_num_evaluated_in_an_episode)
+                delta_time = time.time() - self.start_time
+                evaluated_Q_mean, true_gamma_return_mean,evaluated_Q_std, list_of_n_episode_rewards, average_return_with_diff_base, average_reward= \
+                            self.run_n_episodes(self.episode_num_to_run,self.max_state_num_evaluated_in_an_episode)
                 self.iteration_history.append(self.iteration)
                 self.evaluated_Q_mean_history.append(evaluated_Q_mean)
+                self.evaluated_Q_std_history.append(evaluated_Q_std)
                 self.true_gamma_return_mean_history.append(true_gamma_return_mean)
+
+
+                self.time_history.append(delta_time)
+                # self.list_of_n_episode_rewards_history.append(list_of_n_episode_rewards)
+                self.average_return_with_diff_base_history.append(average_return_with_diff_base)
+                self.average_reward_history.append(average_reward)
+                self.alpha_history.append(self.alpha.item())
+
                 print('Saving evaluation results of the {} iteration.'.format(self.iteration))
-                np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/iteration_evaluation',
+                np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/iteration',
                         np.array(self.iteration_history))
                 np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/evaluated_Q_mean',
                         np.array(self.evaluated_Q_mean_history))
+                np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/evaluated_Q_std',
+                        np.array(self.evaluated_Q_std_history))
                 np.save('./' + self.args.env_name + '/method_' + str(
                     self.args.method) + '/result/true_gamma_return_mean',
                         np.array(self.true_gamma_return_mean_history))
+                np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/time',
+                        np.array(self.time_history))
+                # np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/list_of_n_episode_rewards',
+                #         np.array(self.list_of_n_episode_rewards_history))
+                np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/average_return_with_diff_base',
+                        np.array(self.average_return_with_diff_base_history))
+                np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/average_reward',
+                        np.array(self.average_reward_history))
+                np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/alpha',
+                        np.array(self.alpha_history))
 
-                # plot_online(self.args.env_name, self.args.method, self.args.method_name,
-                #             self.max_state_num_evaluated_in_an_episode)
+                plot_online(self.args.env_name, self.args.method, self.args.method_name,
+                            self.max_state_num_evaluated_in_an_episode)
+
+                if self.iteration >= self.args.max_train:
+                    self.stop_sign.value = 1
+                    break
 
 
 def test():

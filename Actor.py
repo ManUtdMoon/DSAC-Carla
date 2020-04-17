@@ -22,7 +22,7 @@ class Actor():
             'dt': 0.025,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': int(2000+3*self.agent_id),  # connection port
-            'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
+            'task_mode': 'Curve',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'train',
             'max_time_episode': 500,  # maximum timesteps per episode
             'desired_speed': 8,  # desired speed (m/s)

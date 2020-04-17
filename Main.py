@@ -60,8 +60,8 @@ def built_parser(method):
     parser.add_argument('--seed', type=int, default=1, help='initial seed (default: 1)')
 
     '''parallel architecture'''
-    parser.add_argument("--num_buffers", type=int, default=2)
-    parser.add_argument("--num_learners", type=int, default=3) #note that too many learners may cause bad update for shared network
+    parser.add_argument("--num_buffers", type=int, default=3)
+    parser.add_argument("--num_learners", type=int, default=4) #note that too many learners may cause bad update for shared network
     parser.add_argument("--num_actors", type=int, default=4)
 
     '''method list'''
@@ -157,7 +157,7 @@ def main(method):
         'dt': 0.025,  # time interval between two frames
         'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
         'port': 2000,  # connection port
-        'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
+        'task_mode': 'Curve',  # mode of the task, [random, roundabout (only for Town03)]
         'code_mode': 'train',
         'max_time_episode': 500,  # maximum timesteps per episode
         'desired_speed': 8,  # desired speed (m/s)
@@ -254,7 +254,7 @@ def main(method):
             procs.append(Process(target=actor_agent, args=(args, shared_queue, shared_value,[actor1,Q_net1], lock, i)))
         for i in range(args.num_buffers):
             procs.append(Process(target=buffer, args=(args, shared_queue, shared_value,i)))
-        procs.append(Process(target=test_agent, args=(args, shared_value, [actor1, log_alpha])))
+        # procs.append(Process(target=test_agent, args=(args, shared_value, [actor1, log_alpha])))
         procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
         for i in range(args.num_learners):
             if i % 2 == 0:
