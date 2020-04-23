@@ -8,8 +8,22 @@ from torch.distributions import Normal
 import math
 
 
+def init_weights(net):
+    for m in net.modules():
+        if isinstance(m, nn.Linear):
+            weight_shape = list(m.weight.data.size())
+            fan_in = weight_shape[1]
+            fan_out = weight_shape[0]
+            w_bound = np.sqrt(6. / (fan_in + fan_out))
+            m.weight.data.uniform_(-w_bound, w_bound)
+            m.bias.data.fill_(0)
+        elif isinstance(m, nn.BatchNorm1d):
+            m.weight.data.fill_(1)
+            m.bias.data.zero_()
+
+
 class QNet(nn.Module):
-    def __init__(self, args,log_std_min=-6, log_std_max=6):
+    def __init__(self, args,log_std_min=-1, log_std_max=4):
         super(QNet, self).__init__()
         num_states = args.state_dim
         num_action = args.action_dim
@@ -18,29 +32,34 @@ class QNet(nn.Module):
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
                 nn.Conv2d(num_states[-1], 32, kernel_size=4, stride=2, padding=3),
-                nn.ELU(),
+                nn.GELU(),
                 nn.MaxPool2d(kernel_size=2, stride=2),
                 nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),
-                nn.ELU(),
+                nn.GELU(),
                 nn.MaxPool2d(kernel_size=2, stride=2),
                 nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),
-                nn.ELU(),)
+                nn.GELU(),)
             _conv_out_size = self._get_conv_out_size(num_states)
             self.linear1 = nn.Linear(5*5*32+num_action,  num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
-
+            self.linear_mean_3 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_mean_4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_std_3 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_std_4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
         if self.NN_type == "mlp":
             self.linear1 = nn.Linear(num_states[-1]+num_action, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
             self.linear3 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
-            self.linear4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
-            self.linear5 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_mean_4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_mean_5 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_std_4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_std_5 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
 
         self.mean_layer = nn.Linear(num_hidden_cell, 1, bias=True)
         self.log_std_layer = nn.Linear(num_hidden_cell, 1, bias=True)
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
-        self.init_weights()
+        init_weights(self)
 
     def _get_conv_out_size(self, num_states):
         out = self.conv_part(torch.zeros(num_states).unsqueeze(0).permute(0,3,1,2))
@@ -54,7 +73,19 @@ class QNet(nn.Module):
             x = self.linear1(x)
             x = F.gelu(x)
             x = self.linear2(x)
-            x = F.gelu(x)
+
+
+            x_mean = F.gelu(x)
+            x_mean = self.linear_mean_3(x_mean)
+            x_mean = F.gelu(x_mean)
+            x_mean = self.linear_mean_4(x_mean)
+            x_mean = F.gelu(x_mean)
+
+            x_std = F.gelu(x)
+            x_std = self.linear_std_3(x_std)
+            x_std = F.gelu(x_std)
+            x_std = self.linear_std_4(x_std)
+            x_std = F.gelu(x_std)
         elif self.NN_type == "mlp":
             x = torch.cat([state, action], 1)
             x = self.linear1(x)
@@ -62,18 +93,29 @@ class QNet(nn.Module):
             x = self.linear2(x)
             x = F.gelu(x)
             x = self.linear3(x)
-            x = F.gelu(x)
-            x = self.linear4(x)
-            x = F.gelu(x)
-            x = self.linear5(x)
-            x = F.gelu(x)
-        mean = self.mean_layer(x)
-        log_std = self.log_std_layer(x)
-        log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
+
+
+            x_mean = F.gelu(x)
+            x_mean = self.linear_mean_4(x_mean)
+            x_mean = F.gelu(x_mean)
+            x_mean = self.linear_mean_5(x_mean)
+            x_mean = F.gelu(x_mean)
+
+            x_std = F.gelu(x)
+            x_std = self.linear_std_4(x_std)
+            x_std = F.gelu(x_std)
+            x_std = self.linear_std_5(x_std)
+            x_std = F.gelu(x_std)
+        mean = self.mean_layer(x_mean)
+        log_std = self.log_std_layer(x_std)
+        log_std = torch.clamp_min(self.log_std_max*torch.tanh(log_std/self.log_std_max),0) + \
+                  torch.clamp_max(-self.log_std_min * torch.tanh(-log_std / self.log_std_min), 0)
+
+        #log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
 
         return mean, log_std
 
-    def evaluate(self, state, action, device=torch.device("cpu"), min=False,epsilon=1e-6):
+    def evaluate(self, state, action, device=torch.device("cpu"), min=False):
         mean, log_std = self.forward(state, action)
         std = log_std.exp()
         normal = Normal(torch.zeros(mean.shape), torch.ones(std.shape))
@@ -88,24 +130,9 @@ class QNet(nn.Module):
         return mean, std, q_value
 
 
-    def init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                weight_shape = list(m.weight.data.size())
-                fan_in = weight_shape[1]
-                fan_out = weight_shape[0]
-                w_bound = np.sqrt(6. / (fan_in + fan_out))
-                m.weight.data.uniform_(-w_bound, w_bound)
-                m.bias.data.fill_(0)
-            elif isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
 
 class PolicyNet(nn.Module):
-    def __init__(self, args,log_std_min=-20, log_std_max=2):
+    def __init__(self, args,log_std_min=-6, log_std_max=2):
         super(PolicyNet, self).__init__()
         num_states = args.state_dim
         num_hidden_cell = args.num_hidden_cell
@@ -117,25 +144,31 @@ class PolicyNet(nn.Module):
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
                 nn.Conv2d(num_states[-1], 32, kernel_size=4, stride=2, padding=3),
-                nn.ELU(),
+                nn.GELU(),
                 nn.MaxPool2d(kernel_size=2, stride=2),
                 nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),
-                nn.ELU(),
+                nn.GELU(),
                 nn.MaxPool2d(kernel_size=2, stride=2),
                 nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),
-                nn.ELU(),)
+                nn.GELU(),)
             _conv_out_size = self._get_conv_out_size(num_states)
             self.linear1 = nn.Linear(5*5*32,  num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_mean_3 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_mean_4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_std_3 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_std_4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
         if self.NN_type == "mlp":
             self.linear1 = nn.Linear(num_states[-1], num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
             self.linear3 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
-            self.linear4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
-            self.linear5 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_mean_4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_mean_5 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_std_4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
+            self.linear_std_5 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
         self.mean_layer = nn.Linear(num_hidden_cell, len(action_high), bias=True)
         self.log_std_layer = nn.Linear(num_hidden_cell, len(action_high), bias=True)
-        self.init_weights()
+        init_weights(self)
 
         self.action_high = torch.tensor(action_high, dtype=torch.float32)
         self.action_low = torch.tensor(action_low, dtype=torch.float32)
@@ -157,25 +190,47 @@ class PolicyNet(nn.Module):
             x = self.linear1(x)
             x = F.gelu(x)
             x = self.linear2(x)
-            x = F.gelu(x)
+
+
+            x_mean = F.gelu(x)
+            x_mean = self.linear_mean_3(x_mean)
+            x_mean = F.gelu(x_mean)
+            x_mean = self.linear_mean_4(x_mean)
+            x_mean = F.gelu(x_mean)
+
+            x_std = F.gelu(x)
+            x_std = self.linear_std_3(x_std)
+            x_std = F.gelu(x_std)
+            x_std = self.linear_std_4(x_std)
+            x_std = F.gelu(x_std)
+
         if self.NN_type == "mlp":
             x = self.linear1(state)
             x = F.gelu(x)
             x = self.linear2(x)
             x = F.gelu(x)
             x = self.linear3(x)
-            x = F.gelu(x)
-            x = self.linear4(x)
-            x = F.gelu(x)
-            x = self.linear5(x)
-            x = F.gelu(x)
 
-        mean = self.mean_layer(x)
-        log_std = self.log_std_layer(x)
-        log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
+            x_mean = F.gelu(x)
+            x_mean = self.linear_mean_4(x_mean)
+            x_mean = F.gelu(x_mean)
+            x_mean = self.linear_mean_5(x_mean)
+            x_mean = F.gelu(x_mean)
+
+            x_std = F.gelu(x)
+            x_std = self.linear_std_4(x_std)
+            x_std = F.gelu(x_std)
+            x_std = self.linear_std_5(x_std)
+            x_std = F.gelu(x_std)
+
+        mean = self.mean_layer(x_mean)
+        log_std = self.log_std_layer(x_std)
+        log_std = torch.clamp_min(self.log_std_max*torch.tanh(log_std/self.log_std_max),0) + \
+                  torch.clamp_max(-self.log_std_min * torch.tanh(-log_std / self.log_std_min), 0)
+        #log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
         return mean, log_std
 
-    def evaluate(self, state, smooth_policy, device=torch.device("cpu") , epsilon=1e-6):
+    def evaluate(self, state, smooth_policy, device=torch.device("cpu") , epsilon=1e-4):
 
         mean, log_std = self.forward(state)
         normal = Normal(torch.zeros(mean.shape), torch.ones(log_std.shape))
@@ -192,14 +247,14 @@ class PolicyNet(nn.Module):
         else:
             action_mean = torch.mul(self.action_range.to(device), torch.tanh(mean)) + self.action_bias.to(device)
             smooth_random = torch.clamp(0.2*z, -0.5, 0.5)
-            action_random = action_mean + smooth_random
+            action_random = action_mean + torch.mul(self.action_range.to(device),smooth_random)
             action_random = torch.min(action_random, self.action_high.to(device))
             action_random = torch.max(action_random, self.action_low.to(device))
             action = action_random if smooth_policy else action_mean
             return action, 0*log_std.sum(dim=-1, keepdim=True) , std.detach()
 
 
-    def get_action(self, state, deterministic, epsilon=1e-6):
+    def get_action(self, state, deterministic, epsilon=1e-4):
         mean, log_std = self.forward(state)
         normal = Normal(torch.zeros(mean.shape), torch.ones(log_std.shape))
         z = normal.sample()
@@ -212,30 +267,15 @@ class PolicyNet(nn.Module):
             log_prob = log_prob.sum(dim=-1, keepdim=True)
             action_mean = torch.mul(self.action_range, torch.tanh(mean)) + self.action_bias
             action = action_mean.detach().cpu().numpy() if deterministic else action.detach().cpu().numpy()
-            return action, log_prob.detach().item()
+            return action, log_prob.detach().item(), std.detach().cpu().numpy().squeeze()
         else:
             action_mean = torch.mul(self.action_range, torch.tanh(mean)) + self.action_bias
             action = action_mean + 0.1 * torch.mul(self.action_range,z)
             action = torch.min(action, self.action_high)
             action = torch.max(action, self.action_low)
             action = action_mean.detach().cpu().numpy() if deterministic else action.detach().cpu().numpy()
-            return action, 0
+            return action, 0, 0*(log_std.detach().cpu().numpy().squeeze())
 
-    def init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                weight_shape = list(m.weight.data.size())
-                fan_in = weight_shape[1]
-                fan_out = weight_shape[0]
-                w_bound = np.sqrt(6. / (fan_in + fan_out))
-                m.weight.data.uniform_(-w_bound, w_bound)
-                m.bias.data.fill_(0)
-            elif isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
 
 
 
@@ -247,13 +287,13 @@ class ValueNet(nn.Module):
         if self.NN_type == "CNN":
             self.conv_part = nn.Sequential(
                 nn.Conv2d(num_states[-1], 32, kernel_size=4, stride=2, padding=3),
-                nn.ELU(),
+                nn.GELU(),
                 nn.MaxPool2d(kernel_size=2, stride=2),
                 nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),
-                nn.ELU(),
+                nn.GELU(),
                 nn.MaxPool2d(kernel_size=2, stride=2),
                 nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=2),
-                nn.ELU(),)
+                nn.GELU(),)
             _conv_out_size = self._get_conv_out_size(num_states)
             self.linear1 = nn.Linear(5*5*32,  num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
@@ -266,7 +306,7 @@ class ValueNet(nn.Module):
             self.linear4 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
             self.linear5 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
             self.linear6 = nn.Linear(num_hidden_cell, 1, bias=True)
-        self.init_weights()
+        init_weights(self)
 
     def _get_conv_out_size(self, num_states):
         out = self.conv_part(torch.zeros(num_states).unsqueeze(0).permute(0,3,1,2))
@@ -299,21 +339,6 @@ class ValueNet(nn.Module):
 
         return x
 
-    def init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                weight_shape = list(m.weight.data.size())
-                fan_in = weight_shape[1]
-                fan_out = weight_shape[0]
-                w_bound = np.sqrt(6. / (fan_in + fan_out))
-                m.weight.data.uniform_(-w_bound, w_bound)
-                m.bias.data.fill_(0)
-            elif isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
 
 
 def test():

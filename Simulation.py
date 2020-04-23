@@ -88,12 +88,21 @@ class Simulation():
 
                 # TODO
                 with SummaryWriter(log_dir='./logs') as writer:
-                    writer.add_scalar('accel', self.u[0], i)
-                    writer.add_scalar('steer', self.u[1], i)
                     # writer.add_scalar('random', np.random.randint(0, 10), i)
                     v = self.env.ego.get_velocity()
                     v = np.array([v.x, v.y, v.z])
-                    writer.add_scalar('velocity', np.linalg.norm(v), i)
+                    writer.add_scalar('v_x', self.env.state_info['velocity_t'][0], i)
+                    writer.add_scalar('v_y', self.env.state_info['velocity_t'][1], i)
+                    writer.add_scalar('accelaration_x', self.env.state_info['acceleration_t'][0], i)
+                    writer.add_scalar('accelaration_y', self.env.state_info['acceleration_t'][1], i)
+                    writer.add_scalar('distance2terminal', self.env.state_info['dist_to_dest'], i)
+                    # writer.add_scalar('delta_yaw', self.state[5]*2, i)
+                    writer.add_scalar('angular_speed_z', self.env.state_info['dyaw_dt_t'], i)
+                    # writer.add_scalar('lateral_dist', self.state[7]/10, i)
+                    writer.add_scalar('action_throttle', self.env.state_info['action_t_1'][0], i)
+                    writer.add_scalar('action_steer', self.env.state_info['action_t_1'][1], i)
+                    writer.add_scalar('delta_yaw', self.env.state_info['delta_yaw_t'], i)
+                    writer.add_scalar('dist2center', self.env.state_info['lateral_dist_t'], i)
 
                 self.state, self.reward, self.done, _ = self.env.step(self.u)
 
@@ -113,8 +122,7 @@ class Simulation():
 
                 if self.done == True:
                     time.sleep(1)
-                    print("Episode Done!")
-                    return
+                    print("!!!!!!!!!!!!!!!")
                     break
                 step += 1
                 self.episode_step += 1

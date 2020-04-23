@@ -17,12 +17,12 @@ class Actor():
         np.random.seed(seed)
         torch.manual_seed(seed)
 
-        self.actor_params = {
+        actor_params = {
             'obs_size': (160, 100),  # screen size of cv2 window
             'dt': 0.025,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': int(2000+3*self.agent_id),  # connection port
-            'task_mode': 'Curve',  # mode of the task, [random, roundabout (only for Town03)]
+            'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'train',
             'max_time_episode': 500,  # maximum timesteps per episode
             'desired_speed': 8,  # desired speed (m/s)
@@ -32,7 +32,7 @@ class Actor():
         self.counter = shared_value[0]
         self.stop_sign = shared_value[1]
         self.lock = lock
-        self.env = gym.make(args.env_name, params=self.actor_params)
+        self.env = gym.make(args.env_name, params=actor_params)
         self.args = args
         self.experience_in_queue = []
         for i in range(args.num_buffers):
@@ -40,7 +40,7 @@ class Actor():
 
         self.device = torch.device("cpu")
         self.actor = PolicyNet(args).to(self.device)
-        self.Q_net1 = QNet(args).to(self.device)
+        # self.Q_net1 = QNet(args).to(self.device)
 
         #share_net = [Q_net1,Q_net1_target,Q_net2,Q_net2_target,actor,actor_target,log_alpha]
         #share_optimizer=[Q_net1_optimizer,Q_net2_optimizer,actor_optimizer,alpha_optimizer]
@@ -56,7 +56,8 @@ class Actor():
                 time.sleep(0.5)
                 self.put_data()
             else:
-                self.experience_in_queue[index].put((self.last_state, self.last_u, [self.reward*self.args.reward_scale], self.state, [self.done], self.TD.detach().cpu().numpy().squeeze()))
+                self.experience_in_queue[index].put((self.state, self.u, \
+                   [self.reward*self.args.reward_scale], self.state_next, [self.done], self.TD.detach().cpu().numpy().squeeze()))
         else:
             pass
 
@@ -66,29 +67,17 @@ class Actor():
             while not self.stop_sign.value:
                 self.state, _ = self.env.reset()
                 self.episode_step = 0
-                state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
-                if self.args.NN_type == "CNN":
-                    state_tensor = state_tensor.permute(2, 0, 1)
-                self.u, _ = self.actor.get_action(state_tensor.unsqueeze(0), False)
-                #q_1 = self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0]
-                self.u = self.u.squeeze(0)
-                self.last_state = self.state.copy()
-                self.last_u = self.u.copy()
-                #last_q_1 = q_1
+
                 for i in range(self.args.max_step-1):
-                    self.state, self.reward, self.done, _ = self.env.step(self.u)
-                    state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
+                    state_tensor = torch.FloatTensor(self.state.copy()).to(self.device)
                     if self.args.NN_type == "CNN":
                         state_tensor = state_tensor.permute(2, 0, 1)
-                    self.u, _ = self.actor.get_action(state_tensor.unsqueeze(0), False)
-                    #q_1 = self.Q_net1(state_tensor.unsqueeze(0), torch.FloatTensor(self.u).to(self.device))[0]
+                    self.u, _, _ = self.actor.get_action(state_tensor.unsqueeze(0), False)
                     self.u = self.u.squeeze(0)
-
-                    self.TD = torch.zeros(1) #self.reward + (1 - self.done) * self.args.gamma * q_1 - last_q_1
+                    self.state_next, self.reward, self.done, _ = self.env.step(self.u)
+                    self.TD = torch.zeros(1)
                     self.put_data()
-                    self.last_state = self.state.copy()
-                    self.last_u = self.u.copy()
-                    #last_q_1 = q_1
+                    self.state = self.state_next.copy()
 
                     with self.lock:
                         self.counter.value += 1
