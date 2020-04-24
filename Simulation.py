@@ -71,7 +71,7 @@ class Simulation():
             state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
             if self.args.NN_type == "CNN":
                 state_tensor = state_tensor.permute(2, 0, 1)
-            self.u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), True)
+            self.u, log_prob, std = self.actor.get_action(state_tensor.unsqueeze(0), True)
 
 
             for i in range(600):
@@ -116,7 +116,7 @@ class Simulation():
                 state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
                 if self.args.NN_type == "CNN":
                     state_tensor = state_tensor.permute(2, 0, 1)
-                self.u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), True)
+                self.u, log_prob, std = self.actor.get_action(state_tensor.unsqueeze(0), True)
 
 
 

@@ -345,8 +345,8 @@ class Evaluator(object):
                 np.save('./' + self.args.env_name + '/method_' + str(self.args.method) + '/result/a_abs',
                         np.array(self.a_abs_history))
 
-                plot_online(self.args.env_name, self.args.method, self.args.method_name,
-                            self.max_state_num_evaluated_in_an_episode)
+                # plot_online(self.args.env_name, self.args.method, self.args.method_name,
+                #             self.max_state_num_evaluated_in_an_episode)
 
                 if self.iteration >= self.args.max_train:
                     self.stop_sign.value = 1

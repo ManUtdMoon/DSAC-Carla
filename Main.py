@@ -51,7 +51,7 @@ def built_parser(method):
     parser.add_argument('--num_hidden_cell', type=int, default=256)
 
     '''other setting'''
-    parser.add_argument("--max_train", type=int, default=2000000)
+    parser.add_argument("--max_train", type=int, default=1500000)
     parser.add_argument("--decay_T_max", type=int, default=parser.parse_args().max_train, help='for learning rate annealing')
     parser.add_argument('--load_param_period', type=int, default=20)
     parser.add_argument('--save_model_period', type=int, default=20000)
@@ -177,7 +177,7 @@ def main(method):
 
     if args.alpha == 'auto' and args.target_entropy == 'auto' :
         delta_a = np.array(args.action_high, dtype=np.float32)-np.array(args.action_low, dtype=np.float32)
-        args.target_entropy = -3*args.action_dim + sum(np.log(delta_a/2))
+        args.target_entropy = -1*args.action_dim # + sum(np.log(delta_a/2))
 
     Q_net1 = QNet(args)
     Q_net1.train()
