@@ -79,12 +79,12 @@ class Learner():
 
     def get_qloss(self,q, q_std, target_q, target_q_bound):
         if self.args.distributional_Q:
-            loss = -Normal(q, q_std).log_prob(target_q).mean()
+            # loss = -Normal(q, q_std).log_prob(target_q).mean()
             # loss = torch.mean(-Normal(q, q_std).log_prob(target_q_bound)*self.weight \
             #                   + self.weight.logical_not()*torch.pow(q-target_q,2))
-            # loss = torch.mean(torch.pow(q-target_q,2)/(2*torch.pow(q_std.detach(),2)) \
-            #        + torch.pow(q.detach()-target_q,2)/(2*torch.pow(q_std,2))\
-            #        + torch.log(q_std))
+            loss = torch.mean(torch.pow(q-target_q,2)/(2*torch.pow(q_std.detach(),2)) \
+                   + torch.pow(q.detach()-target_q_bound,2)/(2*torch.pow(q_std,2))\
+                   + torch.log(q_std))
         else:
             criterion = nn.MSELoss()
             loss = criterion(q, target_q)

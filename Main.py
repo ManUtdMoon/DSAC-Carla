@@ -51,7 +51,7 @@ def built_parser(method):
     parser.add_argument('--num_hidden_cell', type=int, default=256)
 
     '''other setting'''
-    parser.add_argument("--max_train", type=int, default=1000000)
+    parser.add_argument("--max_train", type=int, default=2000000)
     parser.add_argument("--decay_T_max", type=int, default=parser.parse_args().max_train, help='for learning rate annealing')
     parser.add_argument('--load_param_period', type=int, default=20)
     parser.add_argument('--save_model_period', type=int, default=20000)
@@ -59,9 +59,9 @@ def built_parser(method):
     parser.add_argument('--seed', type=int, default=1, help='initial seed (default: 1)')
 
     '''parallel architecture'''
-    parser.add_argument("--num_buffers", type=int, default=0)
-    parser.add_argument("--num_learners", type=int, default=0) #note that too many learners may cause bad update for shared network
-    parser.add_argument("--num_actors", type=int, default=1)
+    parser.add_argument("--num_buffers", type=int, default=3)
+    parser.add_argument("--num_learners", type=int, default=4) #note that too many learners may cause bad update for shared network
+    parser.add_argument("--num_actors", type=int, default=4)
 
     '''method list'''
     parser.add_argument("--method", type=int, default=method)
