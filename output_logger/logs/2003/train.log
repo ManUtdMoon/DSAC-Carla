@@ -1,0 +1,12 @@
+2020-04-25 16:54:47 INFO     Env running in port 2003
+2020-04-25 16:54:47 INFO     connecting to Carla server...
+2020-04-25 16:54:49 INFO     Carla server port 2003 connected!
+2020-04-25 16:54:56 DEBUG    Lane invasion happened! Episode Done.
+2020-04-25 16:54:59 DEBUG    Lane invasion happened! Episode Done.
+2020-04-25 16:55:02 DEBUG    Speed too slow! Episode Done.
+2020-04-25 16:55:04 DEBUG    Speed too slow! Episode Done.
+2020-04-25 16:55:07 DEBUG    Speed too slow! Episode Done.
+2020-04-25 16:55:08 DEBUG    Speed too slow! Episode Done.
+2020-04-25 16:55:10 DEBUG    Speed too slow! Episode Done.
+2020-04-25 16:55:11 DEBUG    Speed too slow! Episode Done.
+2020-04-25 16:55:13 DEBUG    Speed too slow! Episode Done.

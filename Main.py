@@ -9,7 +9,6 @@ import os
 import time
 from Actor import Actor
 from Learner import Learner
-from Test import Test
 from Evaluator import Evaluator
 from Simulation import Simulation
 from Buffer import Replay_buffer
@@ -26,7 +25,7 @@ def built_parser(method):
     parser.add_argument("--env_name", default="gym_carla:carla-v0")
     #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 Hopper-v2 InvertedDoublePendulum-v2
     parser.add_argument('--state_dim', dest='list', type=int, default=[])
-    parser.add_argument('--info_dim', type=int, default=8)
+    parser.add_argument('--info_dim', type=int, default=10)
     parser.add_argument('--action_dim', type=int, default=[])
     parser.add_argument('--action_high', dest='list', type=float, default=[],action="append")
     parser.add_argument('--action_low', dest='list', type=float, default=[],action="append")
@@ -54,7 +53,7 @@ def built_parser(method):
     parser.add_argument('--num_hidden_cell', type=int, default=256)
 
     '''other setting'''
-    parser.add_argument("--max_train", type=int, default=1000000)
+    parser.add_argument("--max_train", type=int, default=1500000)
     parser.add_argument("--decay_T_max", type=int, default=parser.parse_args().max_train, help='for learning rate annealing')
     parser.add_argument('--load_param_period', type=int, default=20)
     parser.add_argument('--save_model_period', type=int, default=20000)
@@ -62,7 +61,7 @@ def built_parser(method):
     parser.add_argument('--seed', type=int, default=1, help='initial seed (default: 1)')
 
     '''parallel architecture'''
-    parser.add_argument("--num_buffers", type=int, default=2)
+    parser.add_argument("--num_buffers", type=int, default=1)
     parser.add_argument("--num_learners", type=int, default=0)  # note that too many learners may cause bad update for shared network
     parser.add_argument("--num_actors", type=int, default=1)
 
@@ -134,10 +133,6 @@ def leaner_agent(args, shared_queue,shared_value,share_net,share_optimizer,devic
     leaner = Learner(args, shared_queue,shared_value,share_net,share_optimizer,device,lock,i)
     leaner.run()
 
-def test_agent(args, shared_value,share_net):
-
-    test = Test(args, shared_value,share_net)
-    test.run()
 
 def evaluate_agent(args, shared_value, share_net):
 
@@ -181,6 +176,10 @@ def main(method):
     args.init_time = time.time()
     num_cpu = mp.cpu_count()
     print(state_dim, action_dim, action_high, num_cpu)
+
+    if args.alpha == 'auto' and args.target_entropy == 'auto' :
+        delta_a = np.array(args.action_high, dtype=np.float32)-np.array(args.action_low, dtype=np.float32)
+        args.target_entropy = -1*args.action_dim # + sum(np.log(delta_a/2))
 
     Q_net1 = QNet(args)
     Q_net1.train()
@@ -251,14 +250,11 @@ def main(method):
     shared_value = [step_counter, stop_sign,iteration_counter]
     lock = mp.Lock()
     procs=[]
-    if args.code_model!="train":
-        args.alpha = 0.01
-    if args.code_model!="simu":
+    if args.code_model == "train":
         for i in range(args.num_actors):
             procs.append(Process(target=actor_agent, args=(args, shared_queue, shared_value,[actor1,Q_net1], lock, i)))
         for i in range(args.num_buffers):
             procs.append(Process(target=buffer, args=(args, shared_queue, shared_value,i)))
-        procs.append(Process(target=test_agent, args=(args, shared_value, [actor1, log_alpha])))
         procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
         for i in range(args.num_learners):
             if i % 2 == 0:

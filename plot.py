@@ -28,10 +28,10 @@ def make_a_figure_of_n_runs_for_average_performance(env_name, run_numbers, metho
             time = np.load('./' + env_name + '-run' + str(run_idx_) + '/method_' + str(method_idx) + '/result/time.npy')
             average_return_with_diff_base = np.load('./' + env_name + '-run' + str(run_idx_) + '/method_'
                                                     + str(method_idx) + '/result/average_return_with_diff_base.npy')
-            average_return_max_1 = list(map(lambda x: x[0], average_return_with_diff_base))
-            average_return_max_3 = list(map(lambda x: x[1], average_return_with_diff_base))
-            average_return_max_5 = list(map(lambda x: x[2], average_return_with_diff_base))
-            last_number_of_each_method.append(average_return_max_3[-1])
+            average_return_max_best = list(map(lambda x: x[0], average_return_with_diff_base))
+            average_return_max_better = list(map(lambda x: x[1], average_return_with_diff_base))
+            average_return_max_all = list(map(lambda x: x[2], average_return_with_diff_base))
+            last_number_of_each_method.append(average_return_max_all[-1])
 
             alpha = np.load(
                 './' + env_name + '-run' + str(run_idx_) + '/method_' + str(method_idx) + '/result/alpha.npy')
@@ -44,7 +44,7 @@ def make_a_figure_of_n_runs_for_average_performance(env_name, run_numbers, metho
                                                            Algorithms=method_name,
                                                            iteration=(iteration / 10).astype(np.int32) / 100000,
                                                            time=time,
-                                                           average_return=average_return_max_3,
+                                                           average_return=average_return_max_all,
                                                            alpha=alpha))
             df_list.append(df_for_this_run_and_method)
         last_number_of_each_run.append(last_number_of_each_method)
@@ -74,16 +74,16 @@ def make_a_figure_of_n_runs_for_average_performance(env_name, run_numbers, metho
 
     ax1.set_ylabel('Average Return', fontsize=15)
     ax1.set_xlabel("Million iterations", fontsize=15)
-    # plt.xlim(0, 3)
+    #plt.xlim(0, 3)
     plt.yticks(fontsize=15)
     plt.xticks(fontsize=15)
     print(last_for_print)
     print(std_for_print)
     # ax1.set_title(env_name, fontsize=15)
 
-    f3 = plt.figure(2)
-    sns.lineplot(x="iteration", y="alpha", hue="Algorithms", data=total_dataframe)
-    plt.title(env_name + '_alpha')
+    # f3 = plt.figure(2)
+    # sns.lineplot(x="iteration", y="alpha", hue="method_name", MountainCarContinuous-v0=total_dataframe)
+    # plt.title(env_name + '_alpha')
 
     # plt.show()
 
@@ -130,7 +130,7 @@ def make_a_figure_of_n_runs_for_value_estimation(env_name, run_numbers, method_n
         for method_idx in range(init_method, init_method + method_numbers, 1):
             df_list_for_this_method = []
             iteration = np.load('./' + env_name + '-run' + str(run_idx_) + '/method_' + str(
-                method_idx) + '/result/iteration_evaluation.npy')
+                method_idx) + '/result/iteration.npy')
             evaluated_Q_mean = np.load('./' + env_name + '-run' + str(run_idx_) + '/method_' + str(method_idx)
                                   + '/result/evaluated_Q_mean.npy', allow_pickle=True)
             true_gamma_return_mean = np.load('./' + env_name + '-run' + str(run_idx_) + '/method_' + str(method_idx)
@@ -179,8 +179,8 @@ def make_a_figure_of_n_runs_for_value_estimation(env_name, run_numbers, method_n
     ax1.get_legend().remove()
     ax1.set_ylabel('Average Q-value', fontsize=15)
     ax1.set_xlabel("Million iterations", fontsize=15)
-    # plt.xlim(0, 3)
-    # plt.ylim(-20, 180)
+    #plt.xlim(0, 3)
+    #plt.ylim(-20, 180)
     plt.yticks(fontsize=15)
     plt.xticks(fontsize=15)
     # ax1.set_title(env_name, fontsize=15)
@@ -201,8 +201,8 @@ def make_a_figure_of_n_runs_for_value_estimation(env_name, run_numbers, method_n
     ax2.get_legend().remove()
     ax2.set_ylabel('Average Q-value Estimation Bias', fontsize=15)
     ax2.set_xlabel("Million iterations", fontsize=15)
-    # plt.xlim(0, 3)
-    # plt.ylim(-40, 80)
+    #plt.xlim(0, 3)
+    #plt.ylim(-40, 80)
     plt.yticks(fontsize=15)
     plt.xticks(fontsize=15)
     # ax2.set_title(env_name, fontsize=15)
@@ -230,8 +230,6 @@ def test_value_plot():
                 './' + 'test_data' + '-run' + str(run) + '/method_' + str(i) + '/result/n_episodes_info_history.npy',
                 np.array(n_episodes_info_history))
 
-    method_name = {0: 'DSAC', 1: 'SAC', 2: 'Double-Q SAC', 3: 'TD4',
-                   4: 'TD3', 5: 'DDPG'}
 
     env_name = 'test_data'
     make_a_figure_of_n_runs_for_value_estimation(env_name, 4, 4)
@@ -239,8 +237,7 @@ def test_value_plot():
 
 if __name__ == '__main__':
     env_name = "gym_carla:carla-v0"
-    # # MountainCarContinuous-v0 BipedalWalkerHardcore-v2 Pendulum-v0
-    # LunarLanderContinuous-v2  BipedalWalker-v2  CarRacing-v0
+
     run_numbers = 1
     method_numbers = 1
     init_run = 0

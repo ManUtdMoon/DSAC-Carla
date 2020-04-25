@@ -71,14 +71,14 @@ class Simulation():
 
         step = 0
         while True:
-            self.state, self.info_dict = self.env.reset()
+            self.state, self.info = self.env.reset()
             self.episode_step = 0
             state_tensor = torch.FloatTensor(self.state.copy()).float().to(self.device)
             info_tensor = torch.FloatTensor(self.info.copy()).float().to(self.device)
 
             if self.args.NN_type == "CNN":
                 state_tensor = state_tensor.permute(2, 0, 1)
-            self.u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
+            self.u, log_prob, std = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
 
 
             for i in range(500):
@@ -98,16 +98,18 @@ class Simulation():
                     # writer.add_scalar('random', np.random.randint(0, 10), i)
                     v = self.env.ego.get_velocity()
                     v = np.array([v.x, v.y, v.z])
-                    writer.add_scalar('v_x', self.info[0], i)
-                    writer.add_scalar('v_y', self.info[1], i)
-                    writer.add_scalar('accelaration_x', self.info[2], i)
-                    writer.add_scalar('accelaration_y', self.info[3], i)
-                    writer.add_scalar('distance2terminal', self.info[4]*20, i)
+                    writer.add_scalar('v_x', self.env.state_info['velocity_t'][0], i)
+                    writer.add_scalar('v_y', self.env.state_info['velocity_t'][1], i)
+                    writer.add_scalar('accelaration_x', self.env.state_info['acceleration_t'][0], i)
+                    writer.add_scalar('accelaration_y', self.env.state_info['acceleration_t'][1], i)
+                    writer.add_scalar('distance2terminal', self.env.state_info['dist_to_dest'], i)
                     # writer.add_scalar('delta_yaw', self.state[5]*2, i)
-                    writer.add_scalar('angular_speed_z', self.info[5]*5, i)
+                    writer.add_scalar('angular_speed_z', self.env.state_info['dyaw_dt_t'], i)
                     # writer.add_scalar('lateral_dist', self.state[7]/10, i)
-                    writer.add_scalar('action_throttle', self.state[6]/10, i)
-                    writer.add_scalar('action_steer', self.state[7]/10, i)
+                    writer.add_scalar('action_throttle', self.env.state_info['action_t_1'][0], i)
+                    writer.add_scalar('action_steer', self.env.state_info['action_t_1'][1], i)
+                    writer.add_scalar('delta_yaw', self.env.state_info['delta_yaw_t'], i)
+                    writer.add_scalar('dist2center', self.env.state_info['lateral_dist_t'], i)
 
                 self.state, self.reward, self.done, self.info = self.env.step(self.u)
 
@@ -125,7 +127,7 @@ class Simulation():
 
                 if self.args.NN_type == "CNN":
                     state_tensor = state_tensor.permute(2, 0, 1)
-                self.u, log_prob = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
+                self.u, log_prob, std = self.actor.get_action(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), True)
 
 
 
