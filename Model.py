@@ -23,7 +23,7 @@ def init_weights(net):
 
 
 class QNet(nn.Module):
-    def __init__(self, args,log_std_min=-1, log_std_max=4):
+    def __init__(self, args,log_std_min=0., log_std_max=4):
         super(QNet, self).__init__()
         num_states = args.state_dim
         num_action = args.action_dim
@@ -59,6 +59,7 @@ class QNet(nn.Module):
         self.log_std_layer = nn.Linear(num_hidden_cell, 1, bias=True)
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
+        self.denominator = max(abs(self.log_std_min), self.log_std_max)
         init_weights(self)
 
     def _get_conv_out_size(self, num_states):
@@ -108,8 +109,9 @@ class QNet(nn.Module):
             x_std = F.gelu(x_std)
         mean = self.mean_layer(x_mean)
         log_std = self.log_std_layer(x_std)
-        log_std = torch.clamp_min(self.log_std_max*torch.tanh(log_std/self.log_std_max),0) + \
-                  torch.clamp_max(-self.log_std_min * torch.tanh(-log_std / self.log_std_min), 0)
+
+        log_std = torch.clamp_min(self.log_std_max*torch.tanh(log_std/self.denominator),0) + \
+                  torch.clamp_max(-self.log_std_min * torch.tanh(log_std / self.denominator), 0)
 
         #log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
 
@@ -132,7 +134,7 @@ class QNet(nn.Module):
 
 
 class PolicyNet(nn.Module):
-    def __init__(self, args,log_std_min=-6, log_std_max=2):
+    def __init__(self, args,log_std_min=-5, log_std_max=1):
         super(PolicyNet, self).__init__()
         num_states = args.state_dim
         num_hidden_cell = args.num_hidden_cell
@@ -176,6 +178,9 @@ class PolicyNet(nn.Module):
         self.action_bias =  (self.action_high + self.action_low)/2
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
+        self.denominator = max(abs(self.log_std_min), self.log_std_max)
+
+
     def _get_conv_out_size(self, num_states):
 
         out = self.conv_part(torch.zeros(num_states).unsqueeze(0).permute(0,3,1,2))
@@ -225,8 +230,8 @@ class PolicyNet(nn.Module):
 
         mean = self.mean_layer(x_mean)
         log_std = self.log_std_layer(x_std)
-        log_std = torch.clamp_min(self.log_std_max*torch.tanh(log_std/self.log_std_max),0) + \
-                  torch.clamp_max(-self.log_std_min * torch.tanh(-log_std / self.log_std_min), 0)
+        log_std = torch.clamp_min(self.log_std_max*torch.tanh(log_std/self.denominator),0) + \
+                  torch.clamp_max(-self.log_std_min * torch.tanh(log_std / self.denominator), 0)
         #log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
         return mean, log_std
 
