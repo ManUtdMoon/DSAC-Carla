@@ -187,10 +187,11 @@ class Evaluator(object):
             a_std_list.append(a_std)
             if self.args.double_Q and not self.args.double_actor:
                 q = torch.min(
-                    self.Q_net1(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0],
-                    self.Q_net2(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0])
+                    self.Q_net1.evaluate(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0],
+                    self.Q_net2.evaluate(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0])
             else:
-                q, q_std, _ = self.Q_net1(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0]
+                q, q_std, _ = self.Q_net1.evaluate(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0),
+                                                   torch.FloatTensor(u.copy()).to(self.device))[0]
             evaluated_Q_list.append(q.detach().item())
             if self.args.distributional_Q:
                 Q_std_list.append(q_std.detach().item())

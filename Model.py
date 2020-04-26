@@ -184,7 +184,7 @@ class PolicyNet(nn.Module):
             action = torch.mul(self.action_range.to(device), action_1) + self.action_bias.to(device)
             log_prob = Normal(mean, std).log_prob(action_0)-torch.log(1. - action_1.pow(2) + epsilon) - torch.log(self.action_range.to(device))
             log_prob = log_prob.sum(dim=-1, keepdim=True)
-            return action, log_prob , std.detach(), std.detach()
+            return action, log_prob , std.detach()
         else:
             action_mean = torch.mul(self.action_range.to(device), torch.tanh(mean)) + self.action_bias.to(device)
             smooth_random = torch.clamp(0.2*z, -0.5, 0.5)
