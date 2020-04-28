@@ -25,7 +25,7 @@ class Simulation():
             'dt': 0.025,  # time interval between two frames
             'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
             'port': 2000,  # connection port
-            'task_mode': 'Curve',  # mode of the task, [random, roundabout (only for Town03)]
+            'task_mode': 'Long',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'test',
             'max_time_episode': 500,  # maximum timesteps per episode
             'desired_speed': 6,  # desired speed (m/s)
@@ -95,7 +95,7 @@ class Simulation():
                     writer.add_scalar('v_y', self.env.state_info['velocity_t'][1], i)
                     writer.add_scalar('accelaration_x', self.env.state_info['acceleration_t'][0], i)
                     writer.add_scalar('accelaration_y', self.env.state_info['acceleration_t'][1], i)
-                    writer.add_scalar('distance2terminal', self.env.state_info['dist_to_dest'], i)
+                    # writer.add_scalar('distance2terminal', self.env.state_info['dist_to_dest'], i)
                     # writer.add_scalar('delta_yaw', self.state[5]*2, i)
                     writer.add_scalar('angular_speed_z', self.env.state_info['dyaw_dt_t'], i)
                     # writer.add_scalar('lateral_dist', self.state[7]/10, i)
