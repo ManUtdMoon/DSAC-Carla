@@ -44,14 +44,14 @@ def built_parser(method):
     parser.add_argument('--target_entropy',  default="auto",help="auto or some value such as -2")
 
     '''hyper-parameters for soft-Q based algorithm'''
-    parser.add_argument('--max_step', type=int, default=500, help='maximum length of an episode')
+    parser.add_argument('--max_step', type=int, default=200, help='maximum length of an episode')
     parser.add_argument('--buffer_size_max', type=int, default=100000, help='replay memory size')
     parser.add_argument('--initial_buffer_size', type=int, default=2000, help='Learner waits until replay memory stores this number of transition')
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--num_hidden_cell', type=int, default=256)
 
     '''other setting'''
-    parser.add_argument("--max_train", type=int, default=1000000)
+    parser.add_argument("--max_train", type=int, default=1500000)
     parser.add_argument("--decay_T_max", type=int, default=parser.parse_args().max_train, help='for learning rate annealing')
     parser.add_argument('--load_param_period', type=int, default=20)
     parser.add_argument('--save_model_period', type=int, default=20000)
@@ -59,9 +59,9 @@ def built_parser(method):
     parser.add_argument('--seed', type=int, default=1, help='initial seed (default: 1)')
 
     '''parallel architecture'''
-    parser.add_argument("--num_buffers", type=int, default=3)
+    parser.add_argument("--num_buffers", type=int, default=2)
     parser.add_argument("--num_learners", type=int, default=4) #note that too many learners may cause bad update for shared network
-    parser.add_argument("--num_actors", type=int, default=4)
+    parser.add_argument("--num_actors", type=int, default=3)
 
     '''method list'''
     parser.add_argument("--method", type=int, default=method)
@@ -155,7 +155,7 @@ def main(method):
         'task_mode': 'Long',  # mode of the task, [random, roundabout (only for Town03)]
         'code_mode': 'train',
         'max_time_episode': 250,  # maximum timesteps per episode
-        'desired_speed': 8,  # desired speed (m/s)
+        'desired_speed': 15,  # desired speed (m/s)
         'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
     }
 
@@ -274,5 +274,5 @@ if __name__ == '__main__':
     os.environ["OMP_NUM_THREADS"] = "1"
     #os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-    for i in [1]:
+    for i in [0]:
         main(i)
