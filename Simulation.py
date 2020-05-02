@@ -31,8 +31,8 @@ class Simulation():
             'port': 2000,  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'test',
-            'max_time_episode': 500,  # maximum timesteps per episode
-            'desired_speed': 8,  # desired speed (m/s)
+            'max_time_episode': 100,  # maximum timesteps per episode
+            'desired_speed': 15,  # desired speed (m/s)
             'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
         }
 
@@ -68,8 +68,9 @@ class Simulation():
 
     def run(self):
         alpha = 0.004
-
         step = 0
+
+        summaryFlag = True
         while True:
             self.state, self.info = self.env.reset()
             self.episode_step = 0
@@ -94,22 +95,23 @@ class Simulation():
                 self.u = self.u.squeeze(0)
 
                 # TODO
-                with SummaryWriter(log_dir='./logs') as writer:
-                    # writer.add_scalar('random', np.random.randint(0, 10), i)
-                    v = self.env.ego.get_velocity()
-                    v = np.array([v.x, v.y, v.z])
-                    writer.add_scalar('v_x', self.env.state_info['velocity_t'][0], i)
-                    writer.add_scalar('v_y', self.env.state_info['velocity_t'][1], i)
-                    writer.add_scalar('accelaration_x', self.env.state_info['acceleration_t'][0], i)
-                    writer.add_scalar('accelaration_y', self.env.state_info['acceleration_t'][1], i)
-                    writer.add_scalar('distance2terminal', self.env.state_info['dist_to_dest'], i)
-                    # writer.add_scalar('delta_yaw', self.state[5]*2, i)
-                    writer.add_scalar('angular_speed_z', self.env.state_info['dyaw_dt_t'], i)
-                    # writer.add_scalar('lateral_dist', self.state[7]/10, i)
-                    writer.add_scalar('action_throttle', self.env.state_info['action_t_1'][0], i)
-                    writer.add_scalar('action_steer', self.env.state_info['action_t_1'][1], i)
-                    writer.add_scalar('delta_yaw', self.env.state_info['delta_yaw_t'], i)
-                    writer.add_scalar('dist2center', self.env.state_info['lateral_dist_t'], i)
+                if summaryFlag:
+                    with SummaryWriter(log_dir='./logs') as writer:
+                        # writer.add_scalar('random', np.random.randint(0, 10), i)
+                        v = self.env.ego.get_velocity()
+                        v = np.array([v.x, v.y, v.z])
+                        writer.add_scalar('v_x', self.env.state_info['velocity_t'][0], i)
+                        writer.add_scalar('v_y', self.env.state_info['velocity_t'][1], i)
+                        writer.add_scalar('accelaration_x', self.env.state_info['acceleration_t'][0], i)
+                        writer.add_scalar('accelaration_y', self.env.state_info['acceleration_t'][1], i)
+                        # writer.add_scalar('distance2terminal', self.env.state_info['dist_to_dest'], i)
+                        # writer.add_scalar('delta_yaw', self.state[5]*2, i)
+                        writer.add_scalar('angular_speed_z', self.env.state_info['dyaw_dt_t'], i)
+                        # writer.add_scalar('lateral_dist', self.state[7]/10, i)
+                        writer.add_scalar('action_throttle', self.env.state_info['action_t_1'][0], i)
+                        writer.add_scalar('action_steer', self.env.state_info['action_t_1'][1], i)
+                        writer.add_scalar('delta_yaw', self.env.state_info['delta_yaw_t'], i)
+                        writer.add_scalar('dist2center', self.env.state_info['lateral_dist_t'], i)
 
                 self.state, self.reward, self.done, self.info = self.env.step(self.u)
 
@@ -118,7 +120,7 @@ class Simulation():
                 self.entropy_history.append(log_prob)
 
                 # render the image
-                cv2.imshow("camera img", self.state)
+                cv2.imshow("camera img", self.state.squeeze())
                 cv2.waitKey(1)
                 # if step%10000 >=0 and step%10000 <=9999:
                 #     self.env.render(mode='human')
@@ -131,10 +133,11 @@ class Simulation():
 
 
 
-                if self.done == True:
+                if self.done == True or self.env.isTimeOut:
                     time.sleep(1)
                     print("Episode Done!")
-                    return
+                    summaryFlag = False
+                    # return
                     break
                 step += 1
                 self.episode_step += 1

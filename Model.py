@@ -57,7 +57,7 @@ class QNet(nn.Module):
             self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
 
-        # the size of info tensor is (10,1)
+        # the size of info tensor is (7,1)
         self.mean_layer = nn.Linear(num_hidden_cell, 1, bias=True)
         self.log_std_layer = nn.Linear(num_hidden_cell, 1, bias=True)
         self.log_std_min = log_std_min

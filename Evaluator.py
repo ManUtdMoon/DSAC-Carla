@@ -14,7 +14,7 @@ def plot_online(env_name, last_method_idx, Method_Name, max_state):
     # make a total dataframe
     df_list_evaluation = []
     df_list_performance = []
-    init_method = 0
+    init_method = 1
     for method_idx in range(init_method, last_method_idx + 1, 1):
         evaluated_Q_mean = np.load('./' + env_name + '/method_' + str(method_idx)
                                       + '/result/evaluated_Q_mean.npy', allow_pickle=True)
@@ -122,8 +122,8 @@ class Evaluator(object):
             'port': int(2000 + 3*args.num_actors),  # connection port
             'task_mode': 'Straight',  # mode of the task, [random, roundabout (only for Town03)]
             'code_mode': 'test',
-            'max_time_episode': 500,  # maximum timesteps per episode
-            'desired_speed': 8,  # desired speed (m/s)
+            'max_time_episode': 100,  # maximum timesteps per episode
+            'desired_speed': 15,  # desired speed (m/s)
             'max_ego_spawn_times': 100,  # maximum times to spawn ego vehicle
         }
 
@@ -176,7 +176,7 @@ class Evaluator(object):
         a_std_list =[]
         done = 0
         state, info = self.env.reset()
-        while not done and len(reward_list) < self.args.max_step:
+        while not done and len(reward_list) < (self.args.max_step-1):
             state_tensor = torch.FloatTensor(state.copy()).float().to(self.device)
             info_tensor = torch.FloatTensor(info.copy()).float().to(self.device)
             if self.args.NN_type == "CNN":
@@ -191,7 +191,7 @@ class Evaluator(object):
                     self.Q_net2.evaluate(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0), torch.FloatTensor(u.copy()).to(self.device))[0])
             else:
                 q, q_std, _ = self.Q_net1.evaluate(state_tensor.unsqueeze(0), info_tensor.unsqueeze(0),
-                                                   torch.FloatTensor(u.copy()).to(self.device))[0]
+                                                   torch.FloatTensor(u.copy()).to(self.device))
             evaluated_Q_list.append(q.detach().item())
             if self.args.distributional_Q:
                 Q_std_list.append(q_std.detach().item())
