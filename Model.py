@@ -34,7 +34,7 @@ def init_weights(net):
 
 
 class QNet(nn.Module):
-    def __init__(self, args, log_std_min=0., log_std_max=4):
+    def __init__(self, args, log_std_min=-0.1, log_std_max=4):
         super(QNet, self).__init__()
         num_states = args.state_dim
         num_action = args.action_dim
@@ -47,12 +47,12 @@ class QNet(nn.Module):
                 conv_block(in_channel=32, out_channel=32, kernel_size=3, stride=1),  # in: n, 32, 78, 30
                 conv_block(in_channel=32, out_channel=64, kernel_size=3, stride=2),  # in: n, 32, 76, 28
                 conv_block(in_channel=64, out_channel=64, kernel_size=3, stride=1),  # in: n, 64, 37, 13
-                conv_block(in_channel=64, out_channel=128, kernel_size=3, stride=2),  # in: n, 64, 35, 11
-                conv_block(in_channel=128, out_channel=128, kernel_size=3, stride=1),  # in: n, 128, 17, 5
-                conv_block(in_channel=128, out_channel=256, kernel_size=3, stride=2),)  # in: n, 128, 15, 3
+                conv_block(in_channel=64, out_channel=96, kernel_size=3, stride=2),  # in: n, 64, 35, 11
+                conv_block(in_channel=96, out_channel=96, kernel_size=3, stride=1),  # in: n, 128, 17, 5
+                conv_block(in_channel=96, out_channel=128, kernel_size=3, stride=2),)  # in: n, 128, 15, 3
             _conv_out_size = self._get_conv_out_size(num_states)
             # n, 256, 5, 1 -> 256
-            self.linear_img = nn.Linear(256 * 7 * 1, num_hidden_cell, bias=True)
+            self.linear_img = nn.Linear(128 * 7 * 1, num_hidden_cell, bias=True)
             self.linear_info = nn.Linear(num_info + num_action, 128, bias=True)
             self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
@@ -83,7 +83,6 @@ class QNet(nn.Module):
 
         mean = self.mean_layer(x)
         log_std = self.log_std_layer(x)
-
         log_std = torch.clamp_min(self.log_std_max*torch.tanh(log_std/self.denominator),0) + \
                   torch.clamp_max(-self.log_std_min * torch.tanh(log_std / self.denominator), 0)
 
@@ -124,13 +123,13 @@ class PolicyNet(nn.Module):
                 conv_block(in_channel=32, out_channel=32, kernel_size=3, stride=1),  # in: n, 32, 78, 30
                 conv_block(in_channel=32, out_channel=64, kernel_size=3, stride=2),  # in: n, 32, 76, 28
                 conv_block(in_channel=64, out_channel=64, kernel_size=3, stride=1),  # in: n, 64, 37, 13
-                conv_block(in_channel=64, out_channel=128, kernel_size=3, stride=2),  # in: n, 64, 35, 11
-                conv_block(in_channel=128, out_channel=128, kernel_size=3, stride=1),  # in: n, 128, 17, 5
-                conv_block(in_channel=128, out_channel=256, kernel_size=3, stride=2),)  # in: n, 128, 15, 3
+                conv_block(in_channel=64, out_channel=96, kernel_size=3, stride=2),  # in: n, 64, 35, 11
+                conv_block(in_channel=96, out_channel=96, kernel_size=3, stride=1),  # in: n, 128, 17, 5
+                conv_block(in_channel=96, out_channel=128, kernel_size=3, stride=2),)  # in: n, 128, 15, 3
             _conv_out_size = self._get_conv_out_size(num_states)
 
             # n, 32, 6, 6 -> 256
-            self.linear_img = nn.Linear(256 * 7 * 1, num_hidden_cell, bias=True)
+            self.linear_img = nn.Linear(128 * 7 * 1, num_hidden_cell, bias=True)
             self.linear_info = nn.Linear(num_info, 128, bias=True)
             self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
@@ -232,12 +231,12 @@ class ValueNet(nn.Module):
                 conv_block(in_channel=32, out_channel=32, kernel_size=3, stride=1),  # in: n, 32, 78, 30
                 conv_block(in_channel=32, out_channel=64, kernel_size=3, stride=2),  # in: n, 32, 76, 28
                 conv_block(in_channel=64, out_channel=64, kernel_size=3, stride=1),  # in: n, 64, 37, 13
-                conv_block(in_channel=64, out_channel=128, kernel_size=3, stride=2),  # in: n, 64, 35, 11
-                conv_block(in_channel=128, out_channel=128, kernel_size=3, stride=1),  # in: n, 128, 17, 5
-                conv_block(in_channel=128, out_channel=256, kernel_size=3, stride=2),)  # in: n, 128, 15, 3
+                conv_block(in_channel=64, out_channel=96, kernel_size=3, stride=2),  # in: n, 64, 35, 11
+                conv_block(in_channel=96, out_channel=96, kernel_size=3, stride=1),  # in: n, 128, 17, 5
+                conv_block(in_channel=96, out_channel=128, kernel_size=3, stride=2),)  # in: n, 128, 15, 3
             _conv_out_size = self._get_conv_out_size(num_states)
 
-            self.linear_img = nn.Linear(256 * 7 * 1, num_hidden_cell, bias=True)
+            self.linear_img = nn.Linear(128 * 7 * 1, num_hidden_cell, bias=True)
             self.linear_info = nn.Linear(num_info, 128, bias=True)
             self.linear1 = nn.Linear(256+128, num_hidden_cell, bias=True)
             self.linear2 = nn.Linear(num_hidden_cell, num_hidden_cell, bias=True)
@@ -268,14 +267,14 @@ class ValueNet(nn.Module):
 
 class Args(object):
     def __init__(self):
-        self.state_dim = (64, 160, 3)
+        self.state_dim = (64, 160, 1)
         self.action_dim = 2
         self.NN_type = 'CNN'
         self.num_hidden_cell = 256
         self.action_high = [1.0, 1.0]
         self.action_low = [-1.0, -1.0]
         self.stochastic_actor = True
-        self.info_dim = 10
+        self.info_dim = 7
 
 
 def test():
@@ -295,22 +294,22 @@ def test():
     # print(bb.sum(-1, keepdim=True))
 
     args = Args()
-    img = torch.rand((1, 3, 160, 64))
-    info = torch.rand((1, 10))
+    img = torch.rand((1, 1, 160, 64))
+    info = torch.rand((1, 7))
     action = torch.ones((1, 2))
-    # q_net = QNet(args)
-    # print(q_net.forward(img, info, action))
-    # print(q_net.evaluate(img, info, action))
-    # total_num = sum(p.numel() for p in q_net.parameters())
-    # print(total_num)
-
-    p_net = PolicyNet(args)
-    total_num = sum(p.numel() for p in p_net.parameters())
+    q_net = QNet(args)
+    print(q_net.forward(img, info, action))
+    print(q_net.evaluate(img, info, action))
+    total_num = sum(p.numel() for p in q_net.parameters())
     print(total_num)
-    p_net.forward(img, info)
-    print(info.requires_grad)
-    print(p_net.get_action(img, info, True))
-    p_net.evaluate(img, info, False)
+
+    # p_net = PolicyNet(args)
+    # total_num = sum(p.numel() for p in p_net.parameters())
+    # print(total_num)
+    # p_net.forward(img, info)
+    # print(info.requires_grad)
+    # print(p_net.get_action(img, info, True))
+    # p_net.evaluate(img, info, False)
 
     # v_net = ValueNet((160, 64, 3), 256, 'CNN')
     # v_net.forward(img, info)

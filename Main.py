@@ -53,7 +53,7 @@ def built_parser(method):
     parser.add_argument('--num_hidden_cell', type=int, default=256)
 
     '''other setting'''
-    parser.add_argument("--max_train", type=int, default=1000000)
+    parser.add_argument("--max_train", type=int, default=500000)
     parser.add_argument("--decay_T_max", type=int, default=parser.parse_args().max_train, help='for learning rate annealing')
     parser.add_argument('--load_param_period', type=int, default=20)
     parser.add_argument('--save_model_period', type=int, default=20000)
@@ -62,8 +62,8 @@ def built_parser(method):
 
     '''parallel architecture'''
     parser.add_argument("--num_buffers", type=int, default=2)
-    parser.add_argument("--num_learners", type=int, default=4)  # note that too many learners may cause bad update for shared network
-    parser.add_argument("--num_actors", type=int, default=3)
+    parser.add_argument("--num_learners", type=int, default=3)  # note that too many learners may cause bad update for shared network
+    parser.add_argument("--num_actors", type=int, default=4)
 
     '''method list'''
     parser.add_argument("--method", type=int, default=method)
@@ -251,18 +251,18 @@ def main(method):
     lock = mp.Lock()
     procs=[]
     if args.code_model == "train":
+        for i in range(args.num_learners):
+            if i % 2 == 0:
+                device = torch.device("cuda:1")
+            else:
+                device = torch.device("cuda:0")
+            # device = torch.device("cpu")
+            procs.append(Process(target=leaner_agent, args=(args, shared_queue, shared_value,share_net,share_optimizer,device,lock,i)))
         for i in range(args.num_actors):
             procs.append(Process(target=actor_agent, args=(args, shared_queue, shared_value,[actor1,Q_net1], lock, i)))
         for i in range(args.num_buffers):
             procs.append(Process(target=buffer, args=(args, shared_queue, shared_value,i)))
         procs.append(Process(target=evaluate_agent, args=(args, shared_value, share_net)))
-        for i in range(args.num_learners):
-            if i % 2 == 0:
-                device = torch.device("cuda:0")
-            else:
-                device = torch.device("cuda:1")
-            # device = torch.device("cpu")
-            procs.append(Process(target=leaner_agent, args=(args, shared_queue, shared_value,share_net,share_optimizer,device,lock,i)))
     elif args.code_model=="simu":
         procs.append(Process(target=simu_agent, args=(args, shared_value)))
 

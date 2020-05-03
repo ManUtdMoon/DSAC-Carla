@@ -80,6 +80,7 @@ class Actor():
                 self.TD = torch.zeros(1)
                 self.put_data()
                 self.state = self.state_next.copy()
+                self.info = self.info_next.copy()
 
                 with self.lock:
                     self.counter.value += 1
